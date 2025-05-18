@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Group Scholar Opportunity Radar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;500;700&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="glow"></div>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Group Scholar • Opportunity Radar</p>
+        <h1>Scholarship intelligence that keeps your pipeline ahead of the curve.</h1>
+        <p class="subhead">
+          Scan, filter, and brief your team on the highest-fit opportunities in minutes. Track
+          deadlines, readiness, owners, and watchlist signals in one living dashboard.
+        </p>
+        <div class="hero-actions">
+          <button id="exportCsv" class="primary">Export CSV</button>
+          <button id="resetFilters" class="ghost">Reset filters</button>
+        </div>
+      </div>
+      <div class="hero-card">
+        <h3>Radar Snapshot</h3>
+        <div class="metrics" id="metricGrid"></div>
+        <div class="legend">
+          <span><strong>Fit</strong> 1-5 signal of program alignment</span>
+          <span><strong>Stage</strong> readiness for submission</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="controls">
+        <div class="control-block">
+          <label for="search">Search</label>
+          <input id="search" type="text" placeholder="Search by name, owner, or focus" />
+        </div>
+        <div class="control-block">
+          <label for="type">Opportunity Type</label>
+          <select id="type">
+            <option value="all">All types</option>
+          </select>
+        </div>
+        <div class="control-block">
+          <label for="stage">Stage</label>
+          <select id="stage">
+            <option value="all">All stages</option>
+          </select>
+        </div>
+        <div class="control-block">
+          <label for="region">Region</label>
+          <select id="region">
+            <option value="all">All regions</option>
+          </select>
+        </div>
+        <div class="control-block">
+          <label for="window">Deadline Window</label>
+          <select id="window">
+            <option value="all">Anytime</option>
+            <option value="30">Next 30 days</option>
+            <option value="60">Next 60 days</option>
+            <option value="90">Next 90 days</option>
+            <option value="overdue">Overdue</option>
+          </select>
+        </div>
+        <div class="control-block">
+          <label for="sort">Sort by</label>
+          <select id="sort">
+            <option value="deadline">Deadline (soonest)</option>
+            <option value="fit">Fit (highest)</option>
+            <option value="funding">Funding (highest)</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="highlights">
+        <div>
+          <h2>Priority Briefing</h2>
+          <p>
+            Auto-generated signals to guide weekly outreach, submission prep, and partner
+            conversations.
+          </p>
+        </div>
+        <div class="signal-grid" id="signalGrid"></div>
+      </section>
+
+      <section class="grid-layout">
+        <div class="opportunity-column">
+          <div class="list-header">
+            <h2>Active Opportunities</h2>
+            <p id="resultsCount">Loading…</p>
+          </div>
+          <div id="opportunityList" class="opportunity-list"></div>
+        </div>
+        <aside class="side-panel">
+          <div class="panel-block">
+            <h2>Pipeline Health</h2>
+            <div id="pipelineHealth" class="health-list"></div>
+          </div>
+          <div class="panel-block">
+            <h2>Add Opportunity</h2>
+            <form id="addForm" class="add-form">
+              <input name="name" type="text" placeholder="Opportunity name" required />
+              <input name="deadline" type="date" required />
+              <input name="region" type="text" placeholder="Region" required />
+              <input name="type" type="text" placeholder="Type" required />
+              <input name="stage" type="text" placeholder="Stage" required />
+              <input name="owner" type="text" placeholder="Owner" required />
+              <input name="funding" type="number" placeholder="Funding amount" min="0" />
+              <label class="range">
+                Fit score
+                <input name="fit" type="range" min="1" max="5" value="3" />
+              </label>
+              <textarea name="focus" rows="3" placeholder="Focus / notes"></textarea>
+              <input name="link" type="url" placeholder="Source link" />
+              <button type="submit" class="primary">Save opportunity</button>
+            </form>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built for Group Scholar · Keep your pipeline ahead of every deadline.</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

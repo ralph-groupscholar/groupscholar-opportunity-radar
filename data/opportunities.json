@@ -1,0 +1,123 @@
+[
+  {
+    "id": "gsr-aurora",
+    "name": "Aurora Scholars Initiative",
+    "sponsor": "Aurora Foundation",
+    "type": "Scholarship",
+    "region": "National",
+    "deadline": "2026-03-12",
+    "award": "$8,000",
+    "focus": "STEM, Leadership",
+    "eligibility": "High school seniors with 3.5 GPA and community leadership"
+  },
+  {
+    "id": "gsr-ignite",
+    "name": "Ignite Community Fellows",
+    "sponsor": "Civic Bridge Lab",
+    "type": "Fellowship",
+    "region": "Midwest",
+    "deadline": "2026-04-08",
+    "award": "$5,500 stipend",
+    "focus": "Civic, Policy",
+    "eligibility": "Undergraduate students committed to civic impact"
+  },
+  {
+    "id": "gsr-summit",
+    "name": "Summit Arts Equity Grant",
+    "sponsor": "Summit Arts Council",
+    "type": "Grant",
+    "region": "West",
+    "deadline": "2026-03-28",
+    "award": "$12,000",
+    "focus": "Arts, Equity",
+    "eligibility": "Emerging artists with equity-centered portfolio"
+  },
+  {
+    "id": "gsr-horizon",
+    "name": "Horizon Tech Scholars",
+    "sponsor": "Horizon Systems",
+    "type": "Scholarship",
+    "region": "South",
+    "deadline": "2026-05-20",
+    "award": "$15,000",
+    "focus": "Computer Science, Entrepreneurship",
+    "eligibility": "First-generation students entering STEM majors"
+  },
+  {
+    "id": "gsr-sage",
+    "name": "Sage Health Pathways",
+    "sponsor": "Sage Health Network",
+    "type": "Program",
+    "region": "Northeast",
+    "deadline": "2026-04-30",
+    "award": "$4,000 stipend",
+    "focus": "Health, Public Service",
+    "eligibility": "College juniors pursuing public health"
+  },
+  {
+    "id": "gsr-oak",
+    "name": "Oak Climate Innovators",
+    "sponsor": "Oak Institute",
+    "type": "Fellowship",
+    "region": "Global",
+    "deadline": "2026-06-15",
+    "award": "$20,000",
+    "focus": "Climate, Research",
+    "eligibility": "Graduate or early career researchers"
+  },
+  {
+    "id": "gsr-bridge",
+    "name": "Bridge Builders Scholarship",
+    "sponsor": "Bridge Builders Coalition",
+    "type": "Scholarship",
+    "region": "National",
+    "deadline": "2026-03-05",
+    "award": "$7,500",
+    "focus": "Education, Leadership",
+    "eligibility": "Community leaders planning to study education"
+  },
+  {
+    "id": "gsr-orbit",
+    "name": "Orbit Engineering Challenge Grant",
+    "sponsor": "Orbit Aerospace",
+    "type": "Grant",
+    "region": "Southwest",
+    "deadline": "2026-04-18",
+    "award": "$10,000",
+    "focus": "Engineering, Innovation",
+    "eligibility": "Student teams with hardware prototypes"
+  },
+  {
+    "id": "gsr-signal",
+    "name": "Signal Scholarship for Storytellers",
+    "sponsor": "Signal Media",
+    "type": "Scholarship",
+    "region": "National",
+    "deadline": "2026-05-04",
+    "award": "$6,000",
+    "focus": "Journalism, Media",
+    "eligibility": "Students pursuing journalism or media studies"
+  },
+  {
+    "id": "gsr-harbor",
+    "name": "Harbor Community Resilience Fund",
+    "sponsor": "Harbor Trust",
+    "type": "Grant",
+    "region": "Southeast",
+    "deadline": "2026-03-22",
+    "award": "$9,000",
+    "focus": "Community, Resilience",
+    "eligibility": "Community-based organizations with youth leadership"
+  },
+  {
+    "id": "gsr-ignite-edu",
+    "name": "Ignite Educators Fellowship",
+    "sponsor": "Teach Forward Alliance",
+    "type": "Fellowship",
+    "region": "National",
+    "deadline": "2026-06-02",
+    "award": "$8,500",
+    "focus": "Education, Policy",
+    "eligibility": "Current educators with 2+ years of experience"
+  }
+]
