@@ -1,37 +1,29 @@
 const state = {
-  opportunities: [],
-  saved: new Set(),
+  opportunities: [...baseOpportunities],
   custom: [],
-  showSaved: false,
+  saved: new Set(),
 };
 
 const elements = {
-  grid: document.getElementById("card-grid"),
-  savedGrid: document.getElementById("saved-grid"),
-  savedBoard: document.getElementById("saved-board"),
+  metricGrid: document.getElementById("metricGrid"),
+  signalGrid: document.getElementById("signalGrid"),
+  opportunityList: document.getElementById("opportunityList"),
+  pipelineHealth: document.getElementById("pipelineHealth"),
+  resultsCount: document.getElementById("resultsCount"),
   search: document.getElementById("search"),
   type: document.getElementById("type"),
+  stage: document.getElementById("stage"),
   region: document.getElementById("region"),
   window: document.getElementById("window"),
   sort: document.getElementById("sort"),
-  total: document.getElementById("total-count"),
-  dueSoon: document.getElementById("due-soon-count"),
-  savedCount: document.getElementById("saved-count"),
-  intake: document.getElementById("intake"),
-  addSignal: document.getElementById("add-signal"),
-  cancelIntake: document.getElementById("cancel-intake"),
-  intakeForm: document.getElementById("intake-form"),
-  toggleSaved: document.getElementById("toggle-saved"),
+  addForm: document.getElementById("addForm"),
+  exportCsv: document.getElementById("exportCsv"),
+  resetFilters: document.getElementById("resetFilters"),
 };
 
 const today = () => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
-
-const parseAward = (award) => {
-  const numeric = String(award).replace(/[^0-9]/g, "");
-  return numeric ? Number(numeric) : 0;
 };
 
 const daysLeft = (deadline) => {
@@ -40,82 +32,88 @@ const daysLeft = (deadline) => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 };
 
-const radarScore = (opportunity) => {
-  const award = parseAward(opportunity.award);
-  const urgency = Math.max(0, 120 - daysLeft(opportunity.deadline));
-  const focusBoost = opportunity.focus.split(",").length * 8;
-  return Math.min(100, Math.round(award / 500 + urgency / 2 + focusBoost));
-};
-
-const loadSaved = () => {
-  const stored = JSON.parse(localStorage.getItem("opportunitySaved") || "[]");
-  state.saved = new Set(stored);
-};
-
-const persistSaved = () => {
-  localStorage.setItem("opportunitySaved", JSON.stringify(Array.from(state.saved)));
-};
-
 const loadCustom = () => {
-  const stored = JSON.parse(localStorage.getItem("opportunityCustom") || "[]");
+  const stored = JSON.parse(localStorage.getItem("opportunityRadarCustom") || "[]");
   state.custom = stored;
 };
 
 const persistCustom = () => {
-  localStorage.setItem("opportunityCustom", JSON.stringify(state.custom));
+  localStorage.setItem("opportunityRadarCustom", JSON.stringify(state.custom));
 };
 
-const allOpportunities = () => [...state.opportunities, ...state.custom];
+const loadSaved = () => {
+  const stored = JSON.parse(localStorage.getItem("opportunityRadarSaved") || "[]");
+  state.saved = new Set(stored);
+};
+
+const persistSaved = () => {
+  localStorage.setItem("opportunityRadarSaved", JSON.stringify(Array.from(state.saved)));
+};
+
+const allOpportunities = () => [...state.custom, ...state.opportunities];
 
 const updateFilters = () => {
-  const types = new Set(["All", ...allOpportunities().map((item) => item.type)]);
-  const regions = new Set(["All", ...allOpportunities().map((item) => item.region)]);
+  const types = new Set(allOpportunities().map((item) => item.type));
+  const stages = new Set(allOpportunities().map((item) => item.stage));
+  const regions = new Set(allOpportunities().map((item) => item.region));
 
-  elements.type.innerHTML = "";
-  types.forEach((type) => {
-    const option = document.createElement("option");
-    option.value = type;
-    option.textContent = type;
-    elements.type.appendChild(option);
-  });
+  const rebuild = (select, values) => {
+    select.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = "All";
+    select.appendChild(allOption);
 
-  elements.region.innerHTML = "";
-  regions.forEach((region) => {
-    const option = document.createElement("option");
-    option.value = region;
-    option.textContent = region;
-    elements.region.appendChild(option);
-  });
+    Array.from(values)
+      .sort()
+      .forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+  };
+
+  rebuild(elements.type, types);
+  rebuild(elements.stage, stages);
+  rebuild(elements.region, regions);
 };
 
 const getFiltered = () => {
-  const query = elements.search.value.toLowerCase();
+  const query = elements.search.value.trim().toLowerCase();
   const type = elements.type.value;
+  const stage = elements.stage.value;
   const region = elements.region.value;
   const windowValue = elements.window.value;
 
   return allOpportunities().filter((opportunity) => {
     const matchesQuery =
+      !query ||
       opportunity.name.toLowerCase().includes(query) ||
-      opportunity.focus.toLowerCase().includes(query) ||
-      opportunity.sponsor.toLowerCase().includes(query);
-    const matchesType = type === "All" || opportunity.type === type;
-    const matchesRegion = region === "All" || opportunity.region === region;
-    const matchesWindow =
-      windowValue === "all" || daysLeft(opportunity.deadline) <= Number(windowValue);
+      opportunity.owner.toLowerCase().includes(query) ||
+      opportunity.focus.toLowerCase().includes(query);
+    const matchesType = type === "all" || opportunity.type === type;
+    const matchesStage = stage === "all" || opportunity.stage === stage;
+    const matchesRegion = region === "all" || opportunity.region === region;
 
-    return matchesQuery && matchesType && matchesRegion && matchesWindow;
+    const left = daysLeft(opportunity.deadline);
+    const matchesWindow =
+      windowValue === "all" ||
+      (windowValue === "overdue" && left < 0) ||
+      (windowValue !== "overdue" && left <= Number(windowValue) && left >= 0);
+
+    return matchesQuery && matchesType && matchesStage && matchesRegion && matchesWindow;
   });
 };
 
 const sortOpportunities = (list) => {
-  const mode = elements.sort.value;
   const sorted = [...list];
+  const mode = elements.sort.value;
 
-  if (mode === "award") {
-    sorted.sort((a, b) => parseAward(b.award) - parseAward(a.award));
-  } else if (mode === "score") {
-    sorted.sort((a, b) => radarScore(b) - radarScore(a));
+  if (mode === "fit") {
+    sorted.sort((a, b) => b.fit - a.fit);
+  } else if (mode === "funding") {
+    sorted.sort((a, b) => b.funding - a.funding);
   } else {
     sorted.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
   }
@@ -123,133 +121,265 @@ const sortOpportunities = (list) => {
   return sorted;
 };
 
-const renderCards = () => {
-  const filtered = sortOpportunities(getFiltered());
-  elements.grid.innerHTML = "";
+const renderMetrics = (filtered) => {
+  const total = allOpportunities().length;
+  const dueSoon = allOpportunities().filter((item) => {
+    const left = daysLeft(item.deadline);
+    return left >= 0 && left <= 30;
+  }).length;
+  const averageFit = total
+    ? Math.round(allOpportunities().reduce((acc, item) => acc + Number(item.fit), 0) / total)
+    : 0;
 
-  filtered.forEach((opportunity) => {
-    const card = document.createElement("article");
-    const left = daysLeft(opportunity.deadline);
-    card.className = `card${left <= 30 ? " due-soon" : ""}`;
-    card.innerHTML = `
-      <div class="badge">${opportunity.type} - ${opportunity.region}</div>
-      <h3>${opportunity.name}</h3>
-      <div class="meta">
-        <span>${opportunity.sponsor}</span>
-        <span>${left} days left</span>
-      </div>
-      <div class="details">
-        <strong>Focus:</strong> ${opportunity.focus}<br />
-        <strong>Eligibility:</strong> ${opportunity.eligibility}
-      </div>
-      <div class="meta">
-        <span>Award: ${opportunity.award}</span>
-        <span class="score">Score ${radarScore(opportunity)}</span>
-      </div>
-      <div class="actions">
-        <span class="details">Deadline: ${opportunity.deadline}</span>
-        <button class="save ${state.saved.has(opportunity.id) ? "active" : ""}" data-id="${opportunity.id}">
-          ${state.saved.has(opportunity.id) ? "Saved" : "Save"}
-        </button>
-      </div>
-    `;
-    elements.grid.appendChild(card);
+  elements.metricGrid.innerHTML = "";
+  const metrics = [
+    { label: "Tracked", value: total },
+    { label: "Due ≤30d", value: dueSoon },
+    { label: "Avg Fit", value: `${averageFit}/5` },
+    { label: "Saved", value: state.saved.size },
+  ];
+
+  metrics.forEach((metric) => {
+    const div = document.createElement("div");
+    div.className = "metric";
+    div.innerHTML = `<span>${metric.label}</span><strong>${metric.value}</strong>`;
+    elements.metricGrid.appendChild(div);
+  });
+
+  elements.resultsCount.textContent = `Showing ${filtered.length} of ${total} opportunities`;
+};
+
+const renderSignals = (filtered) => {
+  elements.signalGrid.innerHTML = "";
+  const byFit = [...filtered].sort((a, b) => b.fit - a.fit).slice(0, 2);
+  const dueSoon = [...filtered]
+    .filter((item) => daysLeft(item.deadline) >= 0)
+    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+    .slice(0, 2);
+  const overdue = filtered.filter((item) => daysLeft(item.deadline) < 0);
+
+  const signals = [
+    {
+      title: "High-fit focus",
+      body: byFit.length
+        ? byFit.map((item) => `${item.name} · Fit ${item.fit}`).join("<br />")
+        : "No high-fit signals in view.",
+    },
+    {
+      title: "Next deadlines",
+      body: dueSoon.length
+        ? dueSoon
+            .map((item) => `${item.name} · ${daysLeft(item.deadline)} days left`)
+            .join("<br />")
+        : "No upcoming deadlines in view.",
+    },
+    {
+      title: "Overdue watch",
+      body: overdue.length
+        ? overdue.map((item) => `${item.name} · overdue`).join("<br />")
+        : "No overdue opportunities.",
+    },
+  ];
+
+  signals.forEach((signal) => {
+    const card = document.createElement("div");
+    card.className = "signal-card";
+    card.innerHTML = `<h4>${signal.title}</h4><p>${signal.body}</p>`;
+    elements.signalGrid.appendChild(card);
   });
 };
 
-const renderSaved = () => {
-  elements.savedGrid.innerHTML = "";
-  const savedItems = allOpportunities().filter((opportunity) => state.saved.has(opportunity.id));
+const renderPipelineHealth = () => {
+  elements.pipelineHealth.innerHTML = "";
+  const stages = ["Ready", "Drafting", "Discovery", "Watchlist"];
 
-  if (savedItems.length === 0) {
-    elements.savedGrid.innerHTML = "<p>No saved opportunities yet. Save from the radar to pin them here.</p>";
+  stages.forEach((stage) => {
+    const count = allOpportunities().filter((item) => item.stage === stage).length;
+    const div = document.createElement("div");
+    div.className = "health-item";
+    div.innerHTML = `<span>${stage}</span><strong>${count}</strong>`;
+    elements.pipelineHealth.appendChild(div);
+  });
+
+  const owners = new Set(allOpportunities().map((item) => item.owner));
+  const ownerItem = document.createElement("div");
+  ownerItem.className = "health-item";
+  ownerItem.innerHTML = `<span>Active owners</span><strong>${owners.size}</strong>`;
+  elements.pipelineHealth.appendChild(ownerItem);
+};
+
+const renderOpportunities = (filtered) => {
+  elements.opportunityList.innerHTML = "";
+
+  if (filtered.length === 0) {
+    elements.opportunityList.innerHTML =
+      "<div class=\"signal-card\"><h4>No opportunities match.</h4><p>Adjust filters to surface more signals.</p></div>";
     return;
   }
 
-  savedItems.forEach((opportunity) => {
-    const card = document.createElement("div");
-    card.className = "saved-card";
+  sortOpportunities(filtered).forEach((opportunity) => {
+    const card = document.createElement("article");
+    card.className = "opportunity";
+
+    const left = daysLeft(opportunity.deadline);
+    const deadlineLabel = left < 0 ? `Overdue by ${Math.abs(left)} days` : `${left} days left`;
+
+    const tags = [opportunity.type, opportunity.region, opportunity.stage]
+      .map((tag) => `<span class="tag">${tag}</span>`)
+      .join("");
+
+    const saved = state.saved.has(opportunity.id);
+
     card.innerHTML = `
-      <strong>${opportunity.name}</strong>
-      <span>${opportunity.sponsor}</span><br />
-      <span>Deadline: ${opportunity.deadline}</span><br />
-      <span>Award: ${opportunity.award}</span>
+      <header>
+        <div>
+          <h3>${opportunity.name}</h3>
+          <div>${tags}</div>
+        </div>
+        <div class="tag">Fit ${opportunity.fit}/5</div>
+      </header>
+      <p>${opportunity.focus}</p>
+      <div class="meta">
+        <span>Owner: ${opportunity.owner}</span>
+        <span>Deadline: ${opportunity.deadline} · ${deadlineLabel}</span>
+        <span>Funding: $${Number(opportunity.funding).toLocaleString()}</span>
+      </div>
+      <div class="actions">
+        <button class="save ${saved ? "active" : ""}" data-id="${opportunity.id}">
+          ${saved ? "Saved" : "Save"}
+        </button>
+        ${
+          opportunity.link
+            ? `<a class="tag" href="${opportunity.link}" target="_blank" rel="noreferrer">Open source</a>`
+            : ""
+        }
+      </div>
     `;
-    elements.savedGrid.appendChild(card);
+
+    elements.opportunityList.appendChild(card);
   });
 };
 
-const updateStats = () => {
-  const total = allOpportunities().length;
-  const dueSoon = allOpportunities().filter((opportunity) => daysLeft(opportunity.deadline) <= 30)
-    .length;
-  elements.total.textContent = total;
-  elements.dueSoon.textContent = dueSoon;
-  elements.savedCount.textContent = state.saved.size;
-};
-
 const renderAll = () => {
-  renderCards();
-  renderSaved();
-  updateStats();
+  const filtered = getFiltered();
+  renderMetrics(filtered);
+  renderSignals(filtered);
+  renderPipelineHealth();
+  renderOpportunities(filtered);
 };
 
-const handleSaveClick = (event) => {
+const handleSave = (event) => {
   const button = event.target.closest(".save");
   if (!button) return;
   const id = button.dataset.id;
+
   if (state.saved.has(id)) {
     state.saved.delete(id);
   } else {
     state.saved.add(id);
   }
+
   persistSaved();
   renderAll();
 };
 
-const toggleIntake = (open) => {
-  elements.intake.setAttribute("aria-hidden", open ? "false" : "true");
-};
-
-const toggleSavedBoard = () => {
-  state.showSaved = !state.showSaved;
-  elements.savedBoard.setAttribute("aria-hidden", state.showSaved ? "false" : "true");
-  elements.toggleSaved.textContent = state.showSaved ? "Hide Saved" : "Saved Board";
-};
-
-const handleIntakeSubmit = (event) => {
+const handleAddOpportunity = (event) => {
   event.preventDefault();
   const formData = new FormData(event.target);
   const entry = Object.fromEntries(formData.entries());
+
   const id = `custom-${Date.now()}`;
+  const funding = Number(entry.funding || 0);
+  const fit = Number(entry.fit || 3);
+
   state.custom.unshift({
     id,
-    ...entry,
+    name: entry.name,
+    deadline: entry.deadline,
+    region: entry.region,
+    type: entry.type,
+    stage: entry.stage,
+    owner: entry.owner,
+    funding,
+    fit,
+    focus: entry.focus || "",
+    link: entry.link || "",
   });
+
   persistCustom();
   updateFilters();
   renderAll();
-  toggleIntake(false);
   event.target.reset();
 };
 
-const boot = async () => {
-  const response = await fetch("./data/opportunities.json");
-  const data = await response.json();
-  state.opportunities = data;
-  loadSaved();
+const exportCsv = () => {
+  const filtered = sortOpportunities(getFiltered());
+  const headers = [
+    "name",
+    "deadline",
+    "region",
+    "type",
+    "stage",
+    "owner",
+    "funding",
+    "fit",
+    "focus",
+    "link",
+    "saved",
+  ];
+
+  const rows = filtered.map((item) => [
+    item.name,
+    item.deadline,
+    item.region,
+    item.type,
+    item.stage,
+    item.owner,
+    item.funding,
+    item.fit,
+    item.focus,
+    item.link,
+    state.saved.has(item.id) ? "yes" : "no",
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `opportunity-radar-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+};
+
+const resetFilters = () => {
+  elements.search.value = "";
+  elements.type.value = "all";
+  elements.stage.value = "all";
+  elements.region.value = "all";
+  elements.window.value = "all";
+  elements.sort.value = "deadline";
+  renderAll();
+};
+
+const boot = () => {
   loadCustom();
+  loadSaved();
   updateFilters();
   renderAll();
 
-  elements.grid.addEventListener("click", handleSaveClick);
-  [elements.search, elements.type, elements.region, elements.window, elements.sort].forEach(
+  elements.opportunityList.addEventListener("click", handleSave);
+  [elements.search, elements.type, elements.stage, elements.region, elements.window, elements.sort].forEach(
     (input) => input.addEventListener("input", renderAll)
   );
-  elements.addSignal.addEventListener("click", () => toggleIntake(true));
-  elements.cancelIntake.addEventListener("click", () => toggleIntake(false));
-  elements.toggleSaved.addEventListener("click", toggleSavedBoard);
-  elements.intakeForm.addEventListener("submit", handleIntakeSubmit);
+  elements.addForm.addEventListener("submit", handleAddOpportunity);
+  elements.exportCsv.addEventListener("click", exportCsv);
+  elements.resetFilters.addEventListener("click", resetFilters);
 };
 
 boot();

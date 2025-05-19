@@ -13,3 +13,8 @@
 - Built the Opportunity Radar single-page app with filtering, scoring, and saved board views.
 - Added intake form and local persistence for custom signals.
 - Seeded initial opportunity dataset for search and prioritization.
+
+## Iteration 3
+- Rebuilt the Opportunity Radar client logic to match the current UI and data model.
+- Added metrics, signals, pipeline health summaries, and save/export actions.
+- Wired filtering, sorting, reset controls, and custom opportunity intake end-to-end.
