@@ -18,3 +18,5 @@
 - Rebuilt the Opportunity Radar client logic to match the current UI and data model.
 - Added metrics, signals, pipeline health summaries, and save/export actions.
 - Wired filtering, sorting, reset controls, and custom opportunity intake end-to-end.
+- Redeployed the Opportunity Radar site to the production alias.
+- Deployed to Vercel: https://groupscholar-opportunity-radar.vercel.app
