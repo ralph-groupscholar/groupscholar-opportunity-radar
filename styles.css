@@ -298,6 +298,29 @@ body {
   border: 1px solid var(--border);
 }
 
+.panel-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 8px 0 14px;
+}
+
+.brief-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.brief-output {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  font-size: 0.85rem;
+  background: #fff;
+  min-height: 180px;
+}
+
 .health-list {
   display: grid;
   gap: 12px;

@@ -20,3 +20,8 @@
 - Wired filtering, sorting, reset controls, and custom opportunity intake end-to-end.
 - Redeployed the Opportunity Radar site to the production alias.
 - Deployed to Vercel: https://groupscholar-opportunity-radar.vercel.app
+
+## Iteration 4
+- Added a briefing builder that generates a weekly summary from current filters.
+- Enabled one-click copy to clipboard for sharing with leadership teams.
+- Improved CSV export quoting and watchlist cleanup on deletes.

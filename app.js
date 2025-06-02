@@ -1,334 +1,413 @@
-const state = {
-  opportunities: [...baseOpportunities],
-  custom: [],
-  saved: new Set(),
-};
+const STORAGE_KEY = "gs_opportunity_radar_custom_v1";
+const WATCH_KEY = "gs_opportunity_radar_watch_v1";
 
-const elements = {
-  metricGrid: document.getElementById("metricGrid"),
-  signalGrid: document.getElementById("signalGrid"),
-  opportunityList: document.getElementById("opportunityList"),
-  pipelineHealth: document.getElementById("pipelineHealth"),
-  resultsCount: document.getElementById("resultsCount"),
+const selectors = {
   search: document.getElementById("search"),
   type: document.getElementById("type"),
   stage: document.getElementById("stage"),
   region: document.getElementById("region"),
   window: document.getElementById("window"),
   sort: document.getElementById("sort"),
-  addForm: document.getElementById("addForm"),
-  exportCsv: document.getElementById("exportCsv"),
-  resetFilters: document.getElementById("resetFilters"),
+  list: document.getElementById("opportunityList"),
+  count: document.getElementById("resultsCount"),
+  metrics: document.getElementById("metricGrid"),
+  pipeline: document.getElementById("pipelineHealth"),
+  signalGrid: document.getElementById("signalGrid"),
+  export: document.getElementById("exportCsv"),
+  reset: document.getElementById("resetFilters"),
+  form: document.getElementById("addForm"),
+  briefOutput: document.getElementById("briefOutput"),
+  generateBrief: document.getElementById("generateBrief"),
+  copyBrief: document.getElementById("copyBrief"),
 };
 
-const today = () => {
+const state = {
+  opportunities: [],
+  watchlist: new Set(),
+  filters: {
+    search: "",
+    type: "all",
+    stage: "all",
+    region: "all",
+    window: "all",
+    sort: "deadline",
+  },
+};
+
+const daysBetween = (target) => {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const date = new Date(target + "T00:00:00");
+  return Math.ceil((date - now) / (1000 * 60 * 60 * 24));
 };
 
-const daysLeft = (deadline) => {
-  const target = new Date(deadline);
-  const diff = target.getTime() - today().getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-};
+const formatCurrency = (value) =>
+  value
+    ? value.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      })
+    : "N/A";
+
+const formatDate = (value) =>
+  new Date(value + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
 const loadCustom = () => {
-  const stored = JSON.parse(localStorage.getItem("opportunityRadarCustom") || "[]");
-  state.custom = stored;
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch (error) {
+    return [];
+  }
 };
 
-const persistCustom = () => {
-  localStorage.setItem("opportunityRadarCustom", JSON.stringify(state.custom));
+const saveCustom = (items) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 };
 
-const loadSaved = () => {
-  const stored = JSON.parse(localStorage.getItem("opportunityRadarSaved") || "[]");
-  state.saved = new Set(stored);
+const loadWatchlist = () => {
+  try {
+    const data = JSON.parse(localStorage.getItem(WATCH_KEY)) || [];
+    return new Set(data);
+  } catch (error) {
+    return new Set();
+  }
 };
 
-const persistSaved = () => {
-  localStorage.setItem("opportunityRadarSaved", JSON.stringify(Array.from(state.saved)));
+const saveWatchlist = () => {
+  localStorage.setItem(WATCH_KEY, JSON.stringify([...state.watchlist]));
 };
 
-const allOpportunities = () => [...state.custom, ...state.opportunities];
+const hydrate = () => {
+  const custom = loadCustom();
+  state.watchlist = loadWatchlist();
+  state.opportunities = [...baseOpportunities, ...custom];
+};
 
-const updateFilters = () => {
-  const types = new Set(allOpportunities().map((item) => item.type));
-  const stages = new Set(allOpportunities().map((item) => item.stage));
-  const regions = new Set(allOpportunities().map((item) => item.region));
+const unique = (items) => [...new Set(items)].sort();
 
-  const rebuild = (select, values) => {
-    select.innerHTML = "";
-    const allOption = document.createElement("option");
-    allOption.value = "all";
-    allOption.textContent = "All";
-    select.appendChild(allOption);
+const setupFilters = () => {
+  const types = unique(state.opportunities.map((item) => item.type));
+  const stages = unique(state.opportunities.map((item) => item.stage));
+  const regions = unique(state.opportunities.map((item) => item.region));
 
-    Array.from(values)
-      .sort()
-      .forEach((value) => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = value;
-        select.appendChild(option);
-      });
+  const addOptions = (select, values) => {
+    values.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      select.append(option);
+    });
   };
 
-  rebuild(elements.type, types);
-  rebuild(elements.stage, stages);
-  rebuild(elements.region, regions);
+  addOptions(selectors.type, types);
+  addOptions(selectors.stage, stages);
+  addOptions(selectors.region, regions);
 };
 
 const getFiltered = () => {
-  const query = elements.search.value.trim().toLowerCase();
-  const type = elements.type.value;
-  const stage = elements.stage.value;
-  const region = elements.region.value;
-  const windowValue = elements.window.value;
+  const { search, type, stage, region, window, sort } = state.filters;
 
-  return allOpportunities().filter((opportunity) => {
-    const matchesQuery =
-      !query ||
-      opportunity.name.toLowerCase().includes(query) ||
-      opportunity.owner.toLowerCase().includes(query) ||
-      opportunity.focus.toLowerCase().includes(query);
-    const matchesType = type === "all" || opportunity.type === type;
-    const matchesStage = stage === "all" || opportunity.stage === stage;
-    const matchesRegion = region === "all" || opportunity.region === region;
+  let filtered = state.opportunities.filter((item) => {
+    const matchesSearch = [item.name, item.owner, item.focus]
+      .join(" ")
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const matchesType = type === "all" || item.type === type;
+    const matchesStage = stage === "all" || item.stage === stage;
+    const matchesRegion = region === "all" || item.region === region;
+    const days = daysBetween(item.deadline);
 
-    const left = daysLeft(opportunity.deadline);
-    const matchesWindow =
-      windowValue === "all" ||
-      (windowValue === "overdue" && left < 0) ||
-      (windowValue !== "overdue" && left <= Number(windowValue) && left >= 0);
+    let matchesWindow = true;
+    if (window === "overdue") {
+      matchesWindow = days < 0;
+    } else if (window !== "all") {
+      matchesWindow = days >= 0 && days <= Number(window);
+    }
 
-    return matchesQuery && matchesType && matchesStage && matchesRegion && matchesWindow;
+    return matchesSearch && matchesType && matchesStage && matchesRegion && matchesWindow;
   });
-};
 
-const sortOpportunities = (list) => {
-  const sorted = [...list];
-  const mode = elements.sort.value;
-
-  if (mode === "fit") {
-    sorted.sort((a, b) => b.fit - a.fit);
-  } else if (mode === "funding") {
-    sorted.sort((a, b) => b.funding - a.funding);
+  if (sort === "fit") {
+    filtered = filtered.sort((a, b) => b.fit - a.fit);
+  } else if (sort === "funding") {
+    filtered = filtered.sort((a, b) => b.funding - a.funding);
   } else {
-    sorted.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+    filtered = filtered.sort(
+      (a, b) => daysBetween(a.deadline) - daysBetween(b.deadline)
+    );
   }
 
-  return sorted;
+  return filtered;
 };
 
-const renderMetrics = (filtered) => {
-  const total = allOpportunities().length;
-  const dueSoon = allOpportunities().filter((item) => {
-    const left = daysLeft(item.deadline);
-    return left >= 0 && left <= 30;
-  }).length;
-  const averageFit = total
-    ? Math.round(allOpportunities().reduce((acc, item) => acc + Number(item.fit), 0) / total)
-    : 0;
+const renderMetrics = (items) => {
+  const dueSoon = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return days >= 0 && days <= 30;
+  });
+  const highFit = items.filter((item) => item.fit >= 4);
+  const avgFit =
+    items.reduce((sum, item) => sum + item.fit, 0) / (items.length || 1);
 
-  elements.metricGrid.innerHTML = "";
   const metrics = [
-    { label: "Tracked", value: total },
-    { label: "Due ≤30d", value: dueSoon },
-    { label: "Avg Fit", value: `${averageFit}/5` },
-    { label: "Saved", value: state.saved.size },
+    { label: "Active", value: items.length },
+    { label: "Due in 30 days", value: dueSoon.length },
+    { label: "High fit (4+)", value: highFit.length },
+    { label: "Avg fit", value: avgFit.toFixed(1) },
   ];
 
+  selectors.metrics.innerHTML = "";
   metrics.forEach((metric) => {
-    const div = document.createElement("div");
-    div.className = "metric";
-    div.innerHTML = `<span>${metric.label}</span><strong>${metric.value}</strong>`;
-    elements.metricGrid.appendChild(div);
+    const card = document.createElement("div");
+    card.className = "metric";
+    card.innerHTML = `<span>${metric.label}</span><strong>${metric.value}</strong>`;
+    selectors.metrics.append(card);
   });
-
-  elements.resultsCount.textContent = `Showing ${filtered.length} of ${total} opportunities`;
 };
 
-const renderSignals = (filtered) => {
-  elements.signalGrid.innerHTML = "";
-  const byFit = [...filtered].sort((a, b) => b.fit - a.fit).slice(0, 2);
-  const dueSoon = [...filtered]
-    .filter((item) => daysLeft(item.deadline) >= 0)
-    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
-    .slice(0, 2);
-  const overdue = filtered.filter((item) => daysLeft(item.deadline) < 0);
+const renderSignals = (items) => {
+  const soonest = [...items].sort(
+    (a, b) => daysBetween(a.deadline) - daysBetween(b.deadline)
+  )[0];
+  const highestFunding = [...items].sort((a, b) => b.funding - a.funding)[0];
+  const watchlist = items.filter((item) => state.watchlist.has(item.id));
 
   const signals = [
     {
-      title: "High-fit focus",
-      body: byFit.length
-        ? byFit.map((item) => `${item.name} · Fit ${item.fit}`).join("<br />")
-        : "No high-fit signals in view.",
+      title: "Deadline pulse",
+      body: soonest
+        ? `${soonest.name} is due in ${daysBetween(soonest.deadline)} days.`
+        : "No deadlines in view.",
     },
     {
-      title: "Next deadlines",
-      body: dueSoon.length
-        ? dueSoon
-            .map((item) => `${item.name} · ${daysLeft(item.deadline)} days left`)
-            .join("<br />")
-        : "No upcoming deadlines in view.",
+      title: "Biggest award",
+      body: highestFunding
+        ? `${highestFunding.name} offers ${formatCurrency(highestFunding.funding)}.`
+        : "Funding signal not available.",
     },
     {
-      title: "Overdue watch",
-      body: overdue.length
-        ? overdue.map((item) => `${item.name} · overdue`).join("<br />")
-        : "No overdue opportunities.",
+      title: "Watchlist focus",
+      body: watchlist.length
+        ? `${watchlist.length} opportunities flagged for leadership review.`
+        : "Nothing on the watchlist yet.",
     },
   ];
 
+  selectors.signalGrid.innerHTML = "";
   signals.forEach((signal) => {
     const card = document.createElement("div");
     card.className = "signal-card";
     card.innerHTML = `<h4>${signal.title}</h4><p>${signal.body}</p>`;
-    elements.signalGrid.appendChild(card);
+    selectors.signalGrid.append(card);
   });
 };
 
-const renderPipelineHealth = () => {
-  elements.pipelineHealth.innerHTML = "";
-  const stages = ["Ready", "Drafting", "Discovery", "Watchlist"];
+const renderPipeline = (items) => {
+  const stageCounts = items.reduce((acc, item) => {
+    acc[item.stage] = (acc[item.stage] || 0) + 1;
+    return acc;
+  }, {});
+  const topStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0];
+  const overdue = items.filter((item) => daysBetween(item.deadline) < 0).length;
 
-  stages.forEach((stage) => {
-    const count = allOpportunities().filter((item) => item.stage === stage).length;
-    const div = document.createElement("div");
-    div.className = "health-item";
-    div.innerHTML = `<span>${stage}</span><strong>${count}</strong>`;
-    elements.pipelineHealth.appendChild(div);
+  const health = [
+    {
+      label: "Most common stage",
+      value: topStage ? `${topStage[0]} (${topStage[1]})` : "N/A",
+    },
+    { label: "Overdue", value: overdue },
+    { label: "Watchlist", value: state.watchlist.size },
+  ];
+
+  selectors.pipeline.innerHTML = "";
+  health.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "health-item";
+    row.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.pipeline.append(row);
   });
-
-  const owners = new Set(allOpportunities().map((item) => item.owner));
-  const ownerItem = document.createElement("div");
-  ownerItem.className = "health-item";
-  ownerItem.innerHTML = `<span>Active owners</span><strong>${owners.size}</strong>`;
-  elements.pipelineHealth.appendChild(ownerItem);
 };
 
-const renderOpportunities = (filtered) => {
-  elements.opportunityList.innerHTML = "";
+const renderList = (items) => {
+  selectors.list.innerHTML = "";
+  selectors.count.textContent = `${items.length} opportunities in view`;
 
-  if (filtered.length === 0) {
-    elements.opportunityList.innerHTML =
-      "<div class=\"signal-card\"><h4>No opportunities match.</h4><p>Adjust filters to surface more signals.</p></div>";
+  if (!items.length) {
+    selectors.list.innerHTML =
+      "<div class='opportunity'>No opportunities match your filters.</div>";
     return;
   }
 
-  sortOpportunities(filtered).forEach((opportunity) => {
-    const card = document.createElement("article");
+  items.forEach((item) => {
+    const card = document.createElement("div");
     card.className = "opportunity";
 
-    const left = daysLeft(opportunity.deadline);
-    const deadlineLabel = left < 0 ? `Overdue by ${Math.abs(left)} days` : `${left} days left`;
-
-    const tags = [opportunity.type, opportunity.region, opportunity.stage]
-      .map((tag) => `<span class="tag">${tag}</span>`)
-      .join("");
-
-    const saved = state.saved.has(opportunity.id);
+    const days = daysBetween(item.deadline);
+    const watchActive = state.watchlist.has(item.id);
 
     card.innerHTML = `
       <header>
         <div>
-          <h3>${opportunity.name}</h3>
-          <div>${tags}</div>
+          <h3>${item.name}</h3>
+          <div class="meta">
+            <span class="tag">${item.type}</span>
+            <span class="tag">${item.stage}</span>
+            <span class="tag">${item.region}</span>
+          </div>
         </div>
-        <div class="tag">Fit ${opportunity.fit}/5</div>
+        <div>
+          <strong>${formatCurrency(item.funding)}</strong>
+          <div class="meta">Fit ${item.fit} · Due ${item.deadline}</div>
+        </div>
       </header>
-      <p>${opportunity.focus}</p>
-      <div class="meta">
-        <span>Owner: ${opportunity.owner}</span>
-        <span>Deadline: ${opportunity.deadline} · ${deadlineLabel}</span>
-        <span>Funding: $${Number(opportunity.funding).toLocaleString()}</span>
-      </div>
+      <p>${item.focus}</p>
+      <div class="meta">Owner: ${item.owner} · ${
+        days >= 0 ? `${days} days remaining` : `${Math.abs(days)} days overdue`
+      }</div>
       <div class="actions">
-        <button class="save ${saved ? "active" : ""}" data-id="${opportunity.id}">
-          ${saved ? "Saved" : "Save"}
+        <button class="watch ${watchActive ? "active" : ""}" data-id="${item.id}">
+          ${watchActive ? "On watchlist" : "Add to watchlist"}
         </button>
-        ${
-          opportunity.link
-            ? `<a class="tag" href="${opportunity.link}" target="_blank" rel="noreferrer">Open source</a>`
-            : ""
-        }
+        <button class="copy" data-link="${item.link}">Copy link</button>
+        ${item.custom ? `<button class="remove" data-id="${item.id}">Remove</button>` : ""}
       </div>
     `;
 
-    elements.opportunityList.appendChild(card);
+    selectors.list.append(card);
   });
 };
 
-const renderAll = () => {
+const render = () => {
   const filtered = getFiltered();
-  renderMetrics(filtered);
+  renderMetrics(state.opportunities);
   renderSignals(filtered);
-  renderPipelineHealth();
-  renderOpportunities(filtered);
+  renderPipeline(state.opportunities);
+  renderList(filtered);
 };
 
-const handleSave = (event) => {
-  const button = event.target.closest(".save");
-  if (!button) return;
-  const id = button.dataset.id;
+const addOpportunity = (formData) => {
+  const custom = loadCustom();
+  const entry = {
+    id: `custom-${Date.now()}`,
+    name: formData.get("name"),
+    deadline: formData.get("deadline"),
+    region: formData.get("region"),
+    type: formData.get("type"),
+    stage: formData.get("stage"),
+    owner: formData.get("owner"),
+    funding: Number(formData.get("funding")) || 0,
+    fit: Number(formData.get("fit")) || 3,
+    focus: formData.get("focus") || "",
+    link: formData.get("link") || "",
+    custom: true,
+  };
 
-  if (state.saved.has(id)) {
-    state.saved.delete(id);
-  } else {
-    state.saved.add(id);
+  custom.push(entry);
+  saveCustom(custom);
+  hydrate();
+  render();
+};
+
+const removeOpportunity = (id) => {
+  const custom = loadCustom();
+  const updated = custom.filter((item) => item.id !== id);
+  saveCustom(updated);
+  if (state.watchlist.has(id)) {
+    state.watchlist.delete(id);
+    saveWatchlist();
+  }
+  hydrate();
+  render();
+};
+
+const buildBrief = (items) => {
+  if (!items.length) {
+    return "No opportunities match the current filters. Adjust filters to generate a briefing.";
   }
 
-  persistSaved();
-  renderAll();
-};
-
-const handleAddOpportunity = (event) => {
-  event.preventDefault();
-  const formData = new FormData(event.target);
-  const entry = Object.fromEntries(formData.entries());
-
-  const id = `custom-${Date.now()}`;
-  const funding = Number(entry.funding || 0);
-  const fit = Number(entry.fit || 3);
-
-  state.custom.unshift({
-    id,
-    name: entry.name,
-    deadline: entry.deadline,
-    region: entry.region,
-    type: entry.type,
-    stage: entry.stage,
-    owner: entry.owner,
-    funding,
-    fit,
-    focus: entry.focus || "",
-    link: entry.link || "",
+  const today = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
   });
 
-  persistCustom();
-  updateFilters();
-  renderAll();
-  event.target.reset();
+  const overdue = items.filter((item) => daysBetween(item.deadline) < 0);
+  const urgent = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return days >= 0 && days <= 14;
+  });
+  const highFit = items
+    .filter((item) => item.fit >= 4)
+    .sort((a, b) => b.fit - a.fit || b.funding - a.funding)
+    .slice(0, 5);
+  const topFunding = [...items]
+    .sort((a, b) => b.funding - a.funding)
+    .slice(0, 3);
+  const watchlist = items.filter((item) => state.watchlist.has(item.id));
+
+  const lineFor = (item) => {
+    const days = daysBetween(item.deadline);
+    const dayLabel = days >= 0 ? `${days}d` : `${Math.abs(days)}d overdue`;
+    return `- ${item.name} — ${formatDate(item.deadline)} (${dayLabel}) · ${item.owner}`;
+  };
+
+  const section = (title, list, fallback) => {
+    if (!list.length) {
+      return `${title}\n${fallback}`;
+    }
+    return `${title}\n${list.map(lineFor).join("\n")}`;
+  };
+
+  return [
+    `Group Scholar Opportunity Radar Brief — ${today}`,
+    "",
+    `Active opportunities: ${items.length}`,
+    `Due in 30 days: ${items.filter((item) => {
+      const days = daysBetween(item.deadline);
+      return days >= 0 && days <= 30;
+    }).length}`,
+    `High-fit (4+): ${items.filter((item) => item.fit >= 4).length}`,
+    `Watchlist: ${watchlist.length}`,
+    "",
+    section("Overdue", overdue, "No overdue opportunities."),
+    "",
+    section("Urgent (next 14 days)", urgent, "No urgent deadlines in the next two weeks."),
+    "",
+    section("High-fit focus", highFit, "No high-fit opportunities in view."),
+    "",
+    section(
+      "Top funding (for leadership review)",
+      topFunding,
+      "No funding data available."
+    ),
+    "",
+    section(
+      "Watchlist priorities",
+      watchlist,
+      "No watchlist items selected yet."
+    ),
+  ].join("\n");
 };
 
 const exportCsv = () => {
-  const filtered = sortOpportunities(getFiltered());
   const headers = [
-    "name",
-    "deadline",
-    "region",
-    "type",
-    "stage",
-    "owner",
-    "funding",
-    "fit",
-    "focus",
-    "link",
-    "saved",
+    "Name",
+    "Deadline",
+    "Region",
+    "Type",
+    "Stage",
+    "Owner",
+    "Funding",
+    "Fit",
+    "Focus",
+    "Link",
   ];
 
-  const rows = filtered.map((item) => [
+  const rows = state.opportunities.map((item) => [
     item.name,
     item.deadline,
     item.region,
@@ -339,47 +418,112 @@ const exportCsv = () => {
     item.fit,
     item.focus,
     item.link,
-    state.saved.has(item.id) ? "yes" : "no",
   ]);
 
   const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
+    .map((row) => row.map((value) => `"${String(value).replace(/"/g, "\"\"")}"`).join(","))
     .join("\n");
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `opportunity-radar-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "group-scholar-opportunity-radar.csv";
+  document.body.append(link);
+  link.click();
+  link.remove();
   URL.revokeObjectURL(url);
 };
 
-const resetFilters = () => {
-  elements.search.value = "";
-  elements.type.value = "all";
-  elements.stage.value = "all";
-  elements.region.value = "all";
-  elements.window.value = "all";
-  elements.sort.value = "deadline";
-  renderAll();
+const bindEvents = () => {
+  selectors.search.addEventListener("input", (event) => {
+    state.filters.search = event.target.value;
+    render();
+  });
+
+  ["type", "stage", "region", "window", "sort"].forEach((key) => {
+    selectors[key].addEventListener("change", (event) => {
+      state.filters[key] = event.target.value;
+      render();
+    });
+  });
+
+  selectors.list.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target.classList.contains("watch")) {
+      const id = target.dataset.id;
+      if (state.watchlist.has(id)) {
+        state.watchlist.delete(id);
+      } else {
+        state.watchlist.add(id);
+      }
+      saveWatchlist();
+      render();
+    }
+
+    if (target.classList.contains("copy")) {
+      const link = target.dataset.link;
+      if (link) {
+        navigator.clipboard.writeText(link);
+        target.textContent = "Link copied";
+        setTimeout(() => {
+          target.textContent = "Copy link";
+        }, 1200);
+      }
+    }
+
+    if (target.classList.contains("remove")) {
+      removeOpportunity(target.dataset.id);
+    }
+  });
+
+  selectors.export.addEventListener("click", exportCsv);
+
+  selectors.generateBrief.addEventListener("click", () => {
+    selectors.briefOutput.value = buildBrief(getFiltered());
+  });
+
+  selectors.copyBrief.addEventListener("click", () => {
+    const content = selectors.briefOutput.value.trim();
+    if (!content) {
+      selectors.briefOutput.value = buildBrief(getFiltered());
+    }
+    navigator.clipboard.writeText(selectors.briefOutput.value);
+    selectors.copyBrief.textContent = "Copied";
+    setTimeout(() => {
+      selectors.copyBrief.textContent = "Copy to clipboard";
+    }, 1200);
+  });
+
+  selectors.reset.addEventListener("click", () => {
+    state.filters = {
+      search: "",
+      type: "all",
+      stage: "all",
+      region: "all",
+      window: "all",
+      sort: "deadline",
+    };
+
+    selectors.search.value = "";
+    selectors.type.value = "all";
+    selectors.stage.value = "all";
+    selectors.region.value = "all";
+    selectors.window.value = "all";
+    selectors.sort.value = "deadline";
+
+    render();
+  });
+
+  selectors.form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    addOpportunity(formData);
+    event.target.reset();
+  });
 };
 
-const boot = () => {
-  loadCustom();
-  loadSaved();
-  updateFilters();
-  renderAll();
-
-  elements.opportunityList.addEventListener("click", handleSave);
-  [elements.search, elements.type, elements.stage, elements.region, elements.window, elements.sort].forEach(
-    (input) => input.addEventListener("input", renderAll)
-  );
-  elements.addForm.addEventListener("submit", handleAddOpportunity);
-  elements.exportCsv.addEventListener("click", exportCsv);
-  elements.resetFilters.addEventListener("click", resetFilters);
-};
-
-boot();
+hydrate();
+setupFilters();
+bindEvents();
+render();

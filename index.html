@@ -106,6 +106,23 @@
             <div id="pipelineHealth" class="health-list"></div>
           </div>
           <div class="panel-block">
+            <h2>Brief Builder</h2>
+            <p class="panel-note">
+              Generate a weekly briefing snapshot from the current filters.
+            </p>
+            <div class="brief-actions">
+              <button id="generateBrief" class="primary">Generate brief</button>
+              <button id="copyBrief" class="ghost">Copy to clipboard</button>
+            </div>
+            <textarea
+              id="briefOutput"
+              class="brief-output"
+              rows="10"
+              readonly
+              placeholder="Your briefing summary will appear here."
+            ></textarea>
+          </div>
+          <div class="panel-block">
             <h2>Add Opportunity</h2>
             <form id="addForm" class="add-form">
               <input name="name" type="text" placeholder="Opportunity name" required />
