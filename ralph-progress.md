@@ -25,3 +25,8 @@
 - Added a briefing builder that generates a weekly summary from current filters.
 - Enabled one-click copy to clipboard for sharing with leadership teams.
 - Improved CSV export quoting and watchlist cleanup on deletes.
+
+## Iteration 5
+- Added calendar export for filtered opportunities with all-day deadline events.
+- Included owner, focus, fit, funding, and link details in the calendar notes.
+- Redeployed to Vercel: https://groupscholar-opportunity-radar.vercel.app

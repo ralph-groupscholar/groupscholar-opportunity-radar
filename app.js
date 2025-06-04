@@ -14,6 +14,7 @@ const selectors = {
   pipeline: document.getElementById("pipelineHealth"),
   signalGrid: document.getElementById("signalGrid"),
   export: document.getElementById("exportCsv"),
+  exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
   form: document.getElementById("addForm"),
   briefOutput: document.getElementById("briefOutput"),
@@ -55,6 +56,20 @@ const formatDate = (value) =>
     day: "numeric",
     year: "numeric",
   });
+
+const formatIcsDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+};
+
+const escapeIcs = (value) =>
+  String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 
 const loadCustom = () => {
   try {
@@ -435,6 +450,60 @@ const exportCsv = () => {
   URL.revokeObjectURL(url);
 };
 
+const exportCalendar = () => {
+  const items = getFiltered();
+  if (!items.length) {
+    alert("No opportunities match the current filters to export.");
+    return;
+  }
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Group Scholar//Opportunity Radar//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+  ];
+
+  items.forEach((item) => {
+    const start = new Date(`${item.deadline}T00:00:00`);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const descriptionParts = [
+      `Owner: ${item.owner}`,
+      item.focus ? `Focus: ${item.focus}` : "",
+      `Fit: ${item.fit}`,
+      item.funding ? `Funding: ${formatCurrency(item.funding)}` : "Funding: N/A",
+      `Region: ${item.region}`,
+      `Stage: ${item.stage}`,
+      item.link ? `Link: ${item.link}` : "",
+    ].filter(Boolean);
+
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${escapeIcs(item.id)}@groupscholar-opportunity-radar`,
+      `SUMMARY:${escapeIcs(`${item.name} (${item.stage})`)}`,
+      `DTSTART;VALUE=DATE:${formatIcsDate(start)}`,
+      `DTEND;VALUE=DATE:${formatIcsDate(end)}`,
+      `DESCRIPTION:${escapeIcs(descriptionParts.join("\n"))}`,
+      "END:VEVENT"
+    );
+  });
+
+  lines.push("END:VCALENDAR");
+
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "group-scholar-opportunity-deadlines.ics";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 const bindEvents = () => {
   selectors.search.addEventListener("input", (event) => {
     state.filters.search = event.target.value;
@@ -478,6 +547,7 @@ const bindEvents = () => {
   });
 
   selectors.export.addEventListener("click", exportCsv);
+  selectors.exportCalendar.addEventListener("click", exportCalendar);
 
   selectors.generateBrief.addEventListener("click", () => {
     selectors.briefOutput.value = buildBrief(getFiltered());
