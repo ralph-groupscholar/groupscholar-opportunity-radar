@@ -30,3 +30,8 @@
 - Added calendar export for filtered opportunities with all-day deadline events.
 - Included owner, focus, fit, funding, and link details in the calendar notes.
 - Redeployed to Vercel: https://groupscholar-opportunity-radar.vercel.app
+
+## Iteration 6
+- Wired the Action Queue with deadline-ranked recommendations and owner-ready next steps.
+- Added action summary chips to show overdue and near-term workload counts.
+- Prioritized the queue using deadline urgency, fit, and funding signals.

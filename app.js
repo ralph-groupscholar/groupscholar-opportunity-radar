@@ -13,6 +13,8 @@ const selectors = {
   metrics: document.getElementById("metricGrid"),
   pipeline: document.getElementById("pipelineHealth"),
   signalGrid: document.getElementById("signalGrid"),
+  actionSummary: document.getElementById("actionSummary"),
+  actionQueue: document.getElementById("actionQueue"),
   export: document.getElementById("exportCsv"),
   exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
@@ -247,6 +249,129 @@ const renderPipeline = (items) => {
   });
 };
 
+const actionPriority = (days) => {
+  if (days < 0) return 0;
+  if (days <= 7) return 1;
+  if (days <= 14) return 2;
+  if (days <= 30) return 3;
+  return 4;
+};
+
+const actionLabel = (days) => {
+  if (days < 0) return "Overdue";
+  if (days <= 7) return "Due this week";
+  if (days <= 14) return "Due in 2 weeks";
+  if (days <= 30) return "Due this month";
+  return "Future window";
+};
+
+const actionRecommendation = (item, days) => {
+  const stage = item.stage.toLowerCase();
+  if (days < 0) {
+    return "Escalate deadline: request extension or close out.";
+  }
+  if (days <= 7) {
+    if (stage.includes("review") || stage.includes("final") || stage.includes("submit")) {
+      return "Finalize submission and confirm upload.";
+    }
+    if (stage.includes("draft") || stage.includes("application")) {
+      return "Complete draft and route for review.";
+    }
+    return "Lock requirements, assign reviewers, and draft package.";
+  }
+  if (days <= 14) {
+    if (stage.includes("research") || stage.includes("discovery") || stage.includes("scoping")) {
+      return "Confirm eligibility and gather requirements.";
+    }
+    if (stage.includes("outreach") || stage.includes("partner")) {
+      return "Schedule partner check-in and confirm intent.";
+    }
+    return "Outline submission plan and assign owners.";
+  }
+  if (days <= 30) {
+    return "Build submission plan and start early drafts.";
+  }
+  return "Monitor timeline and confirm monthly cadence.";
+};
+
+const renderActionSummary = (items) => {
+  const overdue = items.filter((item) => daysBetween(item.deadline) < 0).length;
+  const dueWeek = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return days >= 0 && days <= 7;
+  }).length;
+  const dueTwoWeeks = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return days >= 0 && days <= 14;
+  }).length;
+  const dueMonth = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return days >= 0 && days <= 30;
+  }).length;
+
+  const summary = [
+    { label: "Overdue", value: overdue },
+    { label: "Due in 7d", value: dueWeek },
+    { label: "Due in 14d", value: dueTwoWeeks },
+    { label: "Due in 30d", value: dueMonth },
+  ];
+
+  selectors.actionSummary.innerHTML = "";
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "action-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.actionSummary.append(chip);
+  });
+};
+
+const renderActionQueue = (items) => {
+  const queue = items
+    .map((item) => {
+      const days = daysBetween(item.deadline);
+      return {
+        ...item,
+        days,
+        priority: actionPriority(days),
+        label: actionLabel(days),
+        recommendation: actionRecommendation(item, days),
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.priority - b.priority ||
+        a.days - b.days ||
+        b.fit - a.fit ||
+        b.funding - a.funding
+    )
+    .slice(0, 8);
+
+  selectors.actionQueue.innerHTML = "";
+
+  if (!queue.length) {
+    selectors.actionQueue.innerHTML =
+      "<div class='action-empty'>No active opportunities in view.</div>";
+    return;
+  }
+
+  queue.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "action-item";
+    card.innerHTML = `
+      <div>
+        <h4>${item.name}</h4>
+        <p>${item.recommendation}</p>
+        <div class="meta">Owner: ${item.owner} · ${item.stage}</div>
+      </div>
+      <div class="action-meta">
+        <span>${item.label}</span>
+        <strong>${formatDate(item.deadline)}</strong>
+      </div>
+    `;
+    selectors.actionQueue.append(card);
+  });
+};
+
 const renderList = (items) => {
   selectors.list.innerHTML = "";
   selectors.count.textContent = `${items.length} opportunities in view`;
@@ -301,6 +426,8 @@ const render = () => {
   renderMetrics(state.opportunities);
   renderSignals(filtered);
   renderPipeline(state.opportunities);
+  renderActionSummary(filtered);
+  renderActionQueue(filtered);
   renderList(filtered);
 };
 
