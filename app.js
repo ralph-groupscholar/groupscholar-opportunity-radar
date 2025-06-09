@@ -15,6 +15,8 @@ const selectors = {
   signalGrid: document.getElementById("signalGrid"),
   actionSummary: document.getElementById("actionSummary"),
   actionQueue: document.getElementById("actionQueue"),
+  readinessSummary: document.getElementById("readinessSummary"),
+  readinessList: document.getElementById("readinessList"),
   export: document.getElementById("exportCsv"),
   exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
@@ -372,6 +374,125 @@ const renderActionQueue = (items) => {
   });
 };
 
+const readinessTask = (item, days) => {
+  const stage = item.stage.toLowerCase();
+  if (days < 0) {
+    return "Decide extension or archive the submission.";
+  }
+  if (days <= 7) {
+    if (stage.includes("review") || stage.includes("final") || stage.includes("submit")) {
+      return "QA submission package and submit.";
+    }
+    if (stage.includes("draft") || stage.includes("application")) {
+      return "Finalize narrative, budget, and artifacts.";
+    }
+    return "Lock requirements and confirm attachments.";
+  }
+  if (days <= 14) {
+    if (stage.includes("research") || stage.includes("discovery") || stage.includes("scoping")) {
+      return "Confirm eligibility and gather requirements.";
+    }
+    if (stage.includes("outreach") || stage.includes("partner")) {
+      return "Confirm partner commitment and letters.";
+    }
+    return "Draft outline and assign writers.";
+  }
+  if (days <= 30) {
+    return "Schedule kickoff and set a weekly prep cadence.";
+  }
+  return "Monitor timeline and confirm monthly check-in.";
+};
+
+const formatOwnerList = (owners) => {
+  const list = [...owners];
+  const shown = list.slice(0, 3);
+  const extra = list.length - shown.length;
+  return extra > 0 ? `${shown.join(", ")} +${extra}` : shown.join(", ");
+};
+
+const renderReadiness = (items) => {
+  if (!selectors.readinessList || !selectors.readinessSummary) {
+    return;
+  }
+
+  const taskMap = new Map();
+  const owners = new Set();
+  let nextDue = null;
+  let overdue = 0;
+
+  items.forEach((item) => {
+    const days = daysBetween(item.deadline);
+    const task = readinessTask(item, days);
+    owners.add(item.owner);
+
+    if (days < 0) {
+      overdue += 1;
+    } else if (nextDue === null || days < nextDue) {
+      nextDue = days;
+    }
+
+    if (!taskMap.has(task)) {
+      taskMap.set(task, { count: 0, soonest: days, owners: new Set() });
+    }
+    const entry = taskMap.get(task);
+    entry.count += 1;
+    entry.soonest = Math.min(entry.soonest, days);
+    entry.owners.add(item.owner);
+  });
+
+  const nextDueLabel = nextDue === null ? "N/A" : `${nextDue}d`;
+  const summary = [
+    { label: "Prep tasks", value: taskMap.size },
+    { label: "Owners", value: owners.size },
+    { label: "Next due", value: nextDueLabel },
+    { label: "Overdue", value: overdue },
+  ];
+
+  selectors.readinessSummary.innerHTML = "";
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "readiness-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.readinessSummary.append(chip);
+  });
+
+  const tasks = [...taskMap.entries()]
+    .map(([task, info]) => ({ task, ...info }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        a.soonest - b.soonest ||
+        a.task.localeCompare(b.task)
+    )
+    .slice(0, 5);
+
+  selectors.readinessList.innerHTML = "";
+
+  if (!tasks.length) {
+    selectors.readinessList.innerHTML =
+      "<div class='readiness-empty'>No readiness tasks yet. Adjust filters.</div>";
+    return;
+  }
+
+  tasks.forEach((item) => {
+    const card = document.createElement("div");
+    const soonestLabel =
+      item.soonest < 0 ? `${Math.abs(item.soonest)}d overdue` : `${item.soonest}d`;
+    card.className = "readiness-item";
+    card.innerHTML = `
+      <div>
+        <h4>${item.task}</h4>
+        <p>${item.count} opportunities · Owners: ${formatOwnerList(item.owners)}</p>
+      </div>
+      <div class="readiness-meta">
+        <span>Next due</span>
+        <strong>${soonestLabel}</strong>
+      </div>
+    `;
+    selectors.readinessList.append(card);
+  });
+};
+
 const renderList = (items) => {
   selectors.list.innerHTML = "";
   selectors.count.textContent = `${items.length} opportunities in view`;
@@ -428,6 +549,7 @@ const render = () => {
   renderPipeline(state.opportunities);
   renderActionSummary(filtered);
   renderActionQueue(filtered);
+  renderReadiness(filtered);
   renderList(filtered);
 };
 

@@ -1,0 +1,155 @@
+[
+  {
+    "id": "op-006",
+    "title": "Civic Data Scholars",
+    "sponsor": "Open City Lab",
+    "amount_usd": 10000,
+    "deadline": "2026-02-20",
+    "locations": [
+      "US"
+    ],
+    "focus_areas": [
+      "data",
+      "civic tech",
+      "policy"
+    ],
+    "eligibility": "Students using data science to solve civic challenges. Preference for projects with public agency partners.",
+    "url": "https://example.org/civic-data",
+    "score": 0.515,
+    "score_breakdown": {
+      "award": 0.667,
+      "deadline": 0.783,
+      "focus": 0.2,
+      "eligibility": 0.2
+    },
+    "days_until_deadline": 13
+  },
+  {
+    "id": "op-001",
+    "title": "Emerging Innovators Scholarship",
+    "sponsor": "Northstar Foundation",
+    "amount_usd": 12000,
+    "deadline": "2026-03-15",
+    "locations": [
+      "US",
+      "Canada"
+    ],
+    "focus_areas": [
+      "STEM",
+      "first-generation",
+      "community leadership"
+    ],
+    "eligibility": "Undergraduate students pursuing STEM fields with demonstrated community leadership. First-generation preferred.",
+    "url": "https://example.org/emerging-innovators",
+    "score": 0.47,
+    "score_breakdown": {
+      "award": 0.8,
+      "deadline": 0.4,
+      "focus": 0.2,
+      "eligibility": 0.4
+    },
+    "days_until_deadline": 36
+  },
+  {
+    "id": "op-003",
+    "title": "Health Equity Scholars",
+    "sponsor": "WellSpring Collective",
+    "amount_usd": 15000,
+    "deadline": "2026-04-10",
+    "locations": [
+      "US",
+      "UK"
+    ],
+    "focus_areas": [
+      "health",
+      "public policy",
+      "equity"
+    ],
+    "eligibility": "Graduate students focused on health equity, public policy, or community health initiatives.",
+    "url": "https://example.org/health-equity",
+    "score": 0.44,
+    "score_breakdown": {
+      "award": 1.0,
+      "deadline": 0.0,
+      "focus": 0.2,
+      "eligibility": 0.6
+    },
+    "days_until_deadline": 62
+  },
+  {
+    "id": "op-002",
+    "title": "Future Educators Fellowship",
+    "sponsor": "BrightPath Trust",
+    "amount_usd": 8000,
+    "deadline": "2026-02-28",
+    "locations": [
+      "US"
+    ],
+    "focus_areas": [
+      "education",
+      "teaching",
+      "rural"
+    ],
+    "eligibility": "Aspiring educators committed to serving rural districts. Open to juniors and seniors.",
+    "url": "https://example.org/future-educators",
+    "score": 0.435,
+    "score_breakdown": {
+      "award": 0.533,
+      "deadline": 0.65,
+      "focus": 0.2,
+      "eligibility": 0.2
+    },
+    "days_until_deadline": 21
+  },
+  {
+    "id": "op-005",
+    "title": "Climate Resilience Award",
+    "sponsor": "Green Horizon Initiative",
+    "amount_usd": 20000,
+    "deadline": "2026-03-30",
+    "locations": [
+      "US",
+      "Global"
+    ],
+    "focus_areas": [
+      "climate",
+      "sustainability",
+      "engineering"
+    ],
+    "eligibility": "Students building climate resilience solutions in engineering or environmental science.",
+    "url": "https://example.org/climate-resilience",
+    "score": 0.395,
+    "score_breakdown": {
+      "award": 1.0,
+      "deadline": 0.15,
+      "focus": 0.2,
+      "eligibility": 0.0
+    },
+    "days_until_deadline": 51
+  },
+  {
+    "id": "op-004",
+    "title": "Creative Futures Grant",
+    "sponsor": "Arden Arts Council",
+    "amount_usd": 5000,
+    "deadline": "2026-05-05",
+    "locations": [
+      "US"
+    ],
+    "focus_areas": [
+      "arts",
+      "design",
+      "storytelling"
+    ],
+    "eligibility": "Artists and designers building community storytelling projects. Open to all academic levels.",
+    "url": "https://example.org/creative-futures",
+    "score": 0.13,
+    "score_breakdown": {
+      "award": 0.333,
+      "deadline": 0.0,
+      "focus": 0.0,
+      "eligibility": 0.2
+    },
+    "days_until_deadline": 87
+  }
+]

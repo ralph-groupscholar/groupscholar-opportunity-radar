@@ -1,18 +1,13 @@
 # Group Scholar Opportunity Radar
 
-Opportunity Radar is a lightweight intelligence board for tracking scholarship, fellowship, and grant opportunities. It supports filtering, scoring, saving, and local intake of new signals.
+Opportunity Radar is a lightweight intelligence dashboard for tracking scholarship opportunities, deadlines, and fit signals. It is designed for weekly pipeline reviews and rapid briefing preparation.
 
 ## Features
-- Filter by type, region, and deadline window
-- Radar score to prioritize opportunities
-- Saved board with local persistence
-- Intake form to add new opportunity signals
+- Filter by type, stage, region, and deadline window
+- Watchlist tracking with local persistence
+- Add custom opportunities (stored locally)
+- Export the current dataset as CSV
+- Auto-generated briefing signals and pipeline health summary
 
-## Run locally
-Open `index.html` in a browser or serve with a simple web server.
-
-```bash
-python3 -m http.server 5173
-```
-
-Then visit `http://localhost:5173`.
+## Local usage
+Open `index.html` in your browser. Data is stored in `localStorage` for custom entries and watchlist signals.

@@ -1,0 +1,68 @@
+[
+  {
+    "id": "op-001",
+    "title": "Emerging Innovators Scholarship",
+    "sponsor": "Northstar Foundation",
+    "amount_usd": 12000,
+    "deadline": "2026-03-15",
+    "locations": ["US", "Canada"],
+    "focus_areas": ["STEM", "first-generation", "community leadership"],
+    "eligibility": "Undergraduate students pursuing STEM fields with demonstrated community leadership. First-generation preferred.",
+    "url": "https://example.org/emerging-innovators"
+  },
+  {
+    "id": "op-002",
+    "title": "Future Educators Fellowship",
+    "sponsor": "BrightPath Trust",
+    "amount_usd": 8000,
+    "deadline": "2026-02-28",
+    "locations": ["US"],
+    "focus_areas": ["education", "teaching", "rural"],
+    "eligibility": "Aspiring educators committed to serving rural districts. Open to juniors and seniors.",
+    "url": "https://example.org/future-educators"
+  },
+  {
+    "id": "op-003",
+    "title": "Health Equity Scholars",
+    "sponsor": "WellSpring Collective",
+    "amount_usd": 15000,
+    "deadline": "2026-04-10",
+    "locations": ["US", "UK"],
+    "focus_areas": ["health", "public policy", "equity"],
+    "eligibility": "Graduate students focused on health equity, public policy, or community health initiatives.",
+    "url": "https://example.org/health-equity"
+  },
+  {
+    "id": "op-004",
+    "title": "Creative Futures Grant",
+    "sponsor": "Arden Arts Council",
+    "amount_usd": 5000,
+    "deadline": "2026-05-05",
+    "locations": ["US"],
+    "focus_areas": ["arts", "design", "storytelling"],
+    "eligibility": "Artists and designers building community storytelling projects. Open to all academic levels.",
+    "url": "https://example.org/creative-futures"
+  },
+  {
+    "id": "op-005",
+    "title": "Climate Resilience Award",
+    "sponsor": "Green Horizon Initiative",
+    "amount_usd": 20000,
+    "deadline": "2026-03-30",
+    "locations": ["US", "Global"],
+    "focus_areas": ["climate", "sustainability", "engineering"],
+    "eligibility": "Students building climate resilience solutions in engineering or environmental science.",
+    "url": "https://example.org/climate-resilience"
+  },
+  {
+    "id": "op-006",
+    "title": "Civic Data Scholars",
+    "sponsor": "Open City Lab",
+    "amount_usd": 10000,
+    "deadline": "2026-02-20",
+    "locations": ["US"],
+    "focus_areas": ["data", "civic tech", "policy"],
+    "eligibility": "Students using data science to solve civic challenges. Preference for projects with public agency partners.",
+    "url": "https://example.org/civic-data"
+  }
+]

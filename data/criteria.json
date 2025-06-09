@@ -1,0 +1,13 @@
+{
+  "focus_priorities": ["STEM", "education", "health", "climate", "data"],
+  "target_regions": ["US"],
+  "eligibility_keywords": ["first-generation", "community", "rural", "equity", "public"],
+  "min_award_usd": 7500,
+  "deadline_window_days": 60,
+  "weights": {
+    "award": 0.3,
+    "deadline": 0.3,
+    "focus": 0.25,
+    "eligibility": 0.15
+  }
+}

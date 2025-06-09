@@ -35,3 +35,8 @@
 - Wired the Action Queue with deadline-ranked recommendations and owner-ready next steps.
 - Added action summary chips to show overdue and near-term workload counts.
 - Prioritized the queue using deadline urgency, fit, and funding signals.
+
+## Iteration 7
+- Added a Submission Readiness panel that turns filtered opportunities into prep tasks.
+- Summarized readiness with task, owner, next-due, and overdue chips.
+- Ranked the top readiness tasks with owner visibility and soonest-due timing.
