@@ -1,5 +1,6 @@
 const STORAGE_KEY = "gs_opportunity_radar_custom_v1";
 const WATCH_KEY = "gs_opportunity_radar_watch_v1";
+const CLIENT_KEY = "gs_opportunity_radar_client_id";
 
 const selectors = {
   search: document.getElementById("search"),
@@ -24,11 +25,15 @@ const selectors = {
   briefOutput: document.getElementById("briefOutput"),
   generateBrief: document.getElementById("generateBrief"),
   copyBrief: document.getElementById("copyBrief"),
+  dataStatus: document.getElementById("dataStatus"),
 };
 
 const state = {
   opportunities: [],
   watchlist: new Set(),
+  remote: {
+    enabled: false,
+  },
   filters: {
     search: "",
     type: "all",
@@ -100,15 +105,130 @@ const saveWatchlist = () => {
   localStorage.setItem(WATCH_KEY, JSON.stringify([...state.watchlist]));
 };
 
-const hydrate = () => {
+const getClientId = () => {
+  let clientId = localStorage.getItem(CLIENT_KEY);
+  if (!clientId) {
+    const seed = Math.random().toString(36).slice(2, 10);
+    clientId = `gs-client-${Date.now()}-${seed}`;
+    localStorage.setItem(CLIENT_KEY, clientId);
+  }
+  return clientId;
+};
+
+const updateDataStatus = (status, message) => {
+  if (!selectors.dataStatus) {
+    return;
+  }
+  selectors.dataStatus.textContent = message;
+  selectors.dataStatus.classList.remove("is-live", "is-fallback");
+  if (status === "live") {
+    selectors.dataStatus.classList.add("is-live");
+  }
+  if (status === "fallback") {
+    selectors.dataStatus.classList.add("is-fallback");
+  }
+};
+
+const canUseRemote = () => window.location.protocol !== "file:";
+
+const fetchJson = async (url, options) => {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+  return response.json();
+};
+
+const loadRemoteData = async () => {
+  const clientId = getClientId();
+  const [opportunities, watchlist] = await Promise.all([
+    fetchJson(`/api/opportunities?clientId=${encodeURIComponent(clientId)}`),
+    fetchJson(`/api/watchlist?clientId=${encodeURIComponent(clientId)}`),
+  ]);
+
+  return {
+    opportunities,
+    watchlist: new Set(watchlist),
+  };
+};
+
+const saveRemoteOpportunity = async (entry) => {
+  const clientId = getClientId();
+  return fetchJson("/api/opportunities", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-client-id": clientId,
+    },
+    body: JSON.stringify({ ...entry, clientId }),
+  });
+};
+
+const deleteRemoteOpportunity = async (id) => {
+  const clientId = getClientId();
+  return fetchJson(
+    `/api/opportunities?id=${encodeURIComponent(id)}&clientId=${encodeURIComponent(clientId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        "x-client-id": clientId,
+      },
+    }
+  );
+};
+
+const updateRemoteWatchlist = async (id, active) => {
+  const clientId = getClientId();
+  return fetchJson("/api/watchlist", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-client-id": clientId,
+    },
+    body: JSON.stringify({ clientId, opportunityId: id, active }),
+  });
+};
+
+const hydrate = async () => {
   const custom = loadCustom();
   state.watchlist = loadWatchlist();
-  state.opportunities = [...baseOpportunities, ...custom];
+
+  if (!canUseRemote()) {
+    state.remote.enabled = false;
+    state.opportunities = [...baseOpportunities, ...custom];
+    updateDataStatus("fallback", "Local-only mode (no live database).");
+    return;
+  }
+
+  updateDataStatus("loading", "Connecting to live database...");
+
+  try {
+    const remote = await loadRemoteData();
+    state.remote.enabled = true;
+    state.opportunities = remote.opportunities;
+    state.watchlist = remote.watchlist;
+    saveWatchlist();
+
+    const remoteCustom = remote.opportunities.filter((item) => item.custom);
+    if (remoteCustom.length) {
+      saveCustom(remoteCustom);
+    }
+
+    updateDataStatus("live", "Live database connected. Changes sync automatically.");
+  } catch (error) {
+    state.remote.enabled = false;
+    state.opportunities = [...baseOpportunities, ...custom];
+    updateDataStatus("fallback", "Using local data - live sync unavailable.");
+  }
 };
 
 const unique = (items) => [...new Set(items)].sort();
 
 const setupFilters = () => {
+  selectors.type.innerHTML = '<option value="all">All types</option>';
+  selectors.stage.innerHTML = '<option value="all">All stages</option>';
+  selectors.region.innerHTML = '<option value="all">All regions</option>';
+
   const types = unique(state.opportunities.map((item) => item.type));
   const stages = unique(state.opportunities.map((item) => item.stage));
   const regions = unique(state.opportunities.map((item) => item.region));
@@ -553,8 +673,7 @@ const render = () => {
   renderList(filtered);
 };
 
-const addOpportunity = (formData) => {
-  const custom = loadCustom();
+const addOpportunity = async (formData) => {
   const entry = {
     id: `custom-${Date.now()}`,
     name: formData.get("name"),
@@ -570,13 +689,39 @@ const addOpportunity = (formData) => {
     custom: true,
   };
 
-  custom.push(entry);
-  saveCustom(custom);
-  hydrate();
+  if (state.remote.enabled) {
+    try {
+      const saved = await saveRemoteOpportunity(entry);
+      state.opportunities.push({ ...saved, custom: true });
+    } catch (error) {
+      const custom = loadCustom();
+      custom.push(entry);
+      saveCustom(custom);
+      state.opportunities = [...baseOpportunities, ...custom];
+      state.remote.enabled = false;
+      updateDataStatus("fallback", "Saved locally - live sync unavailable.");
+    }
+  } else {
+    const custom = loadCustom();
+    custom.push(entry);
+    saveCustom(custom);
+    state.opportunities = [...baseOpportunities, ...custom];
+  }
+
+  setupFilters();
   render();
 };
 
-const removeOpportunity = (id) => {
+const removeOpportunity = async (id) => {
+  if (state.remote.enabled) {
+    try {
+      await deleteRemoteOpportunity(id);
+    } catch (error) {
+      state.remote.enabled = false;
+      updateDataStatus("fallback", "Live sync unavailable - using local data.");
+    }
+  }
+
   const custom = loadCustom();
   const updated = custom.filter((item) => item.id !== id);
   saveCustom(updated);
@@ -584,7 +729,10 @@ const removeOpportunity = (id) => {
     state.watchlist.delete(id);
     saveWatchlist();
   }
-  hydrate();
+  state.opportunities = state.remote.enabled
+    ? state.opportunities.filter((item) => item.id !== id)
+    : [...baseOpportunities, ...updated];
+  setupFilters();
   render();
 };
 
@@ -616,7 +764,7 @@ const buildBrief = (items) => {
   const lineFor = (item) => {
     const days = daysBetween(item.deadline);
     const dayLabel = days >= 0 ? `${days}d` : `${Math.abs(days)}d overdue`;
-    return `- ${item.name} — ${formatDate(item.deadline)} (${dayLabel}) · ${item.owner}`;
+    return `- ${item.name} - ${formatDate(item.deadline)} (${dayLabel}) · ${item.owner}`;
   };
 
   const section = (title, list, fallback) => {
@@ -627,7 +775,7 @@ const buildBrief = (items) => {
   };
 
   return [
-    `Group Scholar Opportunity Radar Brief — ${today}`,
+    `Group Scholar Opportunity Radar Brief - ${today}`,
     "",
     `Active opportunities: ${items.length}`,
     `Due in 30 days: ${items.filter((item) => {
@@ -766,17 +914,27 @@ const bindEvents = () => {
     });
   });
 
-  selectors.list.addEventListener("click", (event) => {
+  selectors.list.addEventListener("click", async (event) => {
     const target = event.target;
     if (target.classList.contains("watch")) {
       const id = target.dataset.id;
-      if (state.watchlist.has(id)) {
-        state.watchlist.delete(id);
-      } else {
+      const nextActive = !state.watchlist.has(id);
+      if (nextActive) {
         state.watchlist.add(id);
+      } else {
+        state.watchlist.delete(id);
       }
       saveWatchlist();
       render();
+
+      if (state.remote.enabled) {
+        try {
+          await updateRemoteWatchlist(id, nextActive);
+        } catch (error) {
+          state.remote.enabled = false;
+          updateDataStatus("fallback", "Live sync unavailable - using local data.");
+        }
+      }
     }
 
     if (target.classList.contains("copy")) {
@@ -791,7 +949,7 @@ const bindEvents = () => {
     }
 
     if (target.classList.contains("remove")) {
-      removeOpportunity(target.dataset.id);
+      await removeOpportunity(target.dataset.id);
     }
   });
 
@@ -834,15 +992,19 @@ const bindEvents = () => {
     render();
   });
 
-  selectors.form.addEventListener("submit", (event) => {
+  selectors.form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
-    addOpportunity(formData);
+    await addOpportunity(formData);
     event.target.reset();
   });
 };
 
-hydrate();
-setupFilters();
-bindEvents();
-render();
+const init = async () => {
+  await hydrate();
+  setupFilters();
+  bindEvents();
+  render();
+};
+
+init();

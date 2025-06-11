@@ -40,3 +40,8 @@
 - Added a Submission Readiness panel that turns filtered opportunities into prep tasks.
 - Summarized readiness with task, owner, next-due, and overdue chips.
 - Ranked the top readiness tasks with owner visibility and soonest-due timing.
+
+## Iteration 42
+- Added Postgres-backed live sync with serverless API routes for opportunities and watchlist.
+- Implemented client-side remote loading, status indicators, and fallback-to-local behavior.
+- Created database schema + seed data and populated the production database.
