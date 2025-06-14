@@ -41,7 +41,17 @@
 - Summarized readiness with task, owner, next-due, and overdue chips.
 - Ranked the top readiness tasks with owner visibility and soonest-due timing.
 
+## Iteration 8
+- Added a Radar Score signal that blends fit, funding, and deadline urgency into one priority number.
+- Exposed Radar Score in the opportunity cards and added a sort option for it.
+- Styled the score chip to visually separate priority from categorical tags.
+
 ## Iteration 42
 - Added Postgres-backed live sync with serverless API routes for opportunities and watchlist.
 - Implemented client-side remote loading, status indicators, and fallback-to-local behavior.
 - Created database schema + seed data and populated the production database.
+
+## Iteration 8
+- Added a live data status badge to the UI to clarify sync state.
+- Updated the Postgres helper to support DATABASE_URL and SSL disable flags.
+- Added a seed script wired to the schema/seed SQL and seeded production data.

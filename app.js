@@ -272,6 +272,8 @@ const getFiltered = () => {
 
   if (sort === "fit") {
     filtered = filtered.sort((a, b) => b.fit - a.fit);
+  } else if (sort === "radar") {
+    filtered = filtered.sort((a, b) => radarScore(b) - radarScore(a));
   } else if (sort === "funding") {
     filtered = filtered.sort((a, b) => b.funding - a.funding);
   } else {
@@ -281,6 +283,31 @@ const getFiltered = () => {
   }
 
   return filtered;
+};
+
+const radarScore = (item) => {
+  const fitScore = (Number(item.fit) || 0) * 20;
+  const fundingScore = Math.min(Number(item.funding) || 0, 100000) / 1000;
+  const days = daysBetween(item.deadline);
+  let urgencyScore = 20;
+
+  if (days < 0) {
+    urgencyScore = 0;
+  } else if (days <= 7) {
+    urgencyScore = 100;
+  } else if (days <= 14) {
+    urgencyScore = 85;
+  } else if (days <= 30) {
+    urgencyScore = 70;
+  } else if (days <= 60) {
+    urgencyScore = 50;
+  } else if (days <= 90) {
+    urgencyScore = 35;
+  }
+
+  const watchBoost = state.watchlist.has(item.id) ? 5 : 0;
+  const score = 0.45 * fitScore + 0.3 * urgencyScore + 0.2 * fundingScore + watchBoost;
+  return Math.max(0, Math.min(100, Math.round(score)));
 };
 
 const renderMetrics = (items) => {
@@ -629,6 +656,7 @@ const renderList = (items) => {
 
     const days = daysBetween(item.deadline);
     const watchActive = state.watchlist.has(item.id);
+    const score = radarScore(item);
 
     card.innerHTML = `
       <header>
@@ -638,6 +666,7 @@ const renderList = (items) => {
             <span class="tag">${item.type}</span>
             <span class="tag">${item.stage}</span>
             <span class="tag">${item.region}</span>
+            <span class="score-chip">Radar score ${score}</span>
           </div>
         </div>
         <div>
