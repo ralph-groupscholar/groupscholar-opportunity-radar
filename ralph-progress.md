@@ -56,3 +56,8 @@
 - Updated the Postgres helper to support DATABASE_URL and SSL disable flags.
 - Added a seed script wired to the schema/seed SQL and seeded production data.
 - Attempted Vercel production deploy but hit daily deployment quota ("api-deployments-free-per-day").
+
+## Iteration 78
+- Implemented the Deadline Horizon panel with deadline buckets and scaled bar chart.
+- Added Owner Load insights by owner with totals, due-soon, overdue, avg fit, and next due timing.
+- Styled the new horizon and owner workload components to match the side-panel cards.

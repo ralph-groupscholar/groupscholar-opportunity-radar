@@ -18,6 +18,8 @@ const selectors = {
   actionQueue: document.getElementById("actionQueue"),
   readinessSummary: document.getElementById("readinessSummary"),
   readinessList: document.getElementById("readinessList"),
+  horizonChart: document.getElementById("horizonChart"),
+  ownerLoad: document.getElementById("ownerLoad"),
   export: document.getElementById("exportCsv"),
   exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
@@ -398,6 +400,230 @@ const renderPipeline = (items) => {
   });
 };
 
+const renderHorizon = (items) => {
+  if (!selectors.horizonChart) {
+    return;
+  }
+
+  const buckets = [
+    { label: "Overdue", test: (days) => days < 0 },
+    { label: "0-7d", test: (days) => days >= 0 && days <= 7 },
+    { label: "8-14d", test: (days) => days >= 8 && days <= 14 },
+    { label: "15-30d", test: (days) => days >= 15 && days <= 30 },
+    { label: "31-60d", test: (days) => days >= 31 && days <= 60 },
+    { label: "61-90d", test: (days) => days >= 61 && days <= 90 },
+    { label: "90d+", test: (days) => days > 90 },
+  ];
+
+  const counts = buckets.map(() => 0);
+  items.forEach((item) => {
+    const days = daysBetween(item.deadline);
+    const idx = buckets.findIndex((bucket) => bucket.test(days));
+    if (idx >= 0) {
+      counts[idx] += 1;
+    }
+  });
+
+  const maxCount = Math.max(1, ...counts);
+  selectors.horizonChart.innerHTML = "";
+
+  if (!items.length) {
+    selectors.horizonChart.innerHTML =
+      "<div class='horizon-empty'>No deadlines in view.</div>";
+    return;
+  }
+
+  buckets.forEach((bucket, index) => {
+    const row = document.createElement("div");
+    row.className = "horizon-row";
+    const width = Math.round((counts[index] / maxCount) * 100);
+    row.innerHTML = `
+      <span class="horizon-label">${bucket.label}</span>
+      <div class="horizon-bar">
+        <span style="width: ${width}%"></span>
+      </div>
+      <strong class="horizon-count">${counts[index]}</strong>
+    `;
+    selectors.horizonChart.append(row);
+  });
+};
+
+const renderOwnerLoad = (items) => {
+  if (!selectors.ownerLoad) {
+    return;
+  }
+
+  const ownerMap = new Map();
+  items.forEach((item) => {
+    const owner = item.owner || "Unassigned";
+    const days = daysBetween(item.deadline);
+    if (!ownerMap.has(owner)) {
+      ownerMap.set(owner, { owner, count: 0, fitTotal: 0, soonest: days });
+    }
+    const entry = ownerMap.get(owner);
+    entry.count += 1;
+    entry.fitTotal += Number(item.fit) || 0;
+    entry.soonest = Math.min(entry.soonest, days);
+  });
+
+  const owners = [...ownerMap.values()]
+    .map((entry) => ({
+      ...entry,
+      avgFit: entry.count ? entry.fitTotal / entry.count : 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        a.soonest - b.soonest ||
+        a.owner.localeCompare(b.owner)
+    )
+    .slice(0, 6);
+
+  selectors.ownerLoad.innerHTML = "";
+
+  if (!owners.length) {
+    selectors.ownerLoad.innerHTML =
+      "<div class='owner-empty'>No owners in view.</div>";
+    return;
+  }
+
+  owners.forEach((entry) => {
+    const card = document.createElement("div");
+    const soonestLabel =
+      entry.soonest < 0
+        ? `${Math.abs(entry.soonest)}d overdue`
+        : `${entry.soonest}d`;
+    card.className = "owner-item";
+    card.innerHTML = `
+      <div>
+        <h4>${entry.owner}</h4>
+        <p>${entry.count} opportunities · Next due ${soonestLabel}</p>
+      </div>
+      <div class="owner-meta">
+        <span>Avg fit</span>
+        <strong>${entry.avgFit.toFixed(1)}</strong>
+      </div>
+    `;
+    selectors.ownerLoad.append(card);
+  });
+};
+
+const renderDeadlineHorizon = (items) => {
+  if (!selectors.horizonChart) {
+    return;
+  }
+
+  if (!items.length) {
+    selectors.horizonChart.innerHTML =
+      "<div class='horizon-empty'>No deadlines in view yet.</div>";
+    return;
+  }
+
+  const buckets = [
+    { label: "Overdue", match: (days) => days < 0 },
+    { label: "0-14d", match: (days) => days >= 0 && days <= 14 },
+    { label: "15-30d", match: (days) => days >= 15 && days <= 30 },
+    { label: "31-60d", match: (days) => days >= 31 && days <= 60 },
+    { label: "61-90d", match: (days) => days >= 61 && days <= 90 },
+    { label: "90d+", match: (days) => days > 90 },
+  ];
+
+  const counts = buckets.map((bucket) =>
+    items.filter((item) => bucket.match(daysBetween(item.deadline))).length
+  );
+  const maxCount = Math.max(1, ...counts);
+
+  selectors.horizonChart.innerHTML = "";
+  buckets.forEach((bucket, index) => {
+    const count = counts[index];
+    const row = document.createElement("div");
+    row.className = "horizon-row";
+    row.innerHTML = `
+      <span>${bucket.label}</span>
+      <div class="horizon-bar">
+        <div class="horizon-fill" style="width: ${(count / maxCount) * 100}%"></div>
+      </div>
+      <strong>${count}</strong>
+    `;
+    selectors.horizonChart.append(row);
+  });
+};
+
+const renderOwnerLoad = (items) => {
+  if (!selectors.ownerLoad) {
+    return;
+  }
+
+  if (!items.length) {
+    selectors.ownerLoad.innerHTML =
+      "<div class='owner-empty'>No owner load to show yet.</div>";
+    return;
+  }
+
+  const owners = new Map();
+
+  items.forEach((item) => {
+    const days = daysBetween(item.deadline);
+    if (!owners.has(item.owner)) {
+      owners.set(item.owner, {
+        owner: item.owner,
+        total: 0,
+        fitSum: 0,
+        dueSoon: 0,
+        overdue: 0,
+        nextDue: null,
+      });
+    }
+
+    const entry = owners.get(item.owner);
+    entry.total += 1;
+    entry.fitSum += Number(item.fit) || 0;
+    if (days < 0) {
+      entry.overdue += 1;
+    } else {
+      if (days <= 30) {
+        entry.dueSoon += 1;
+      }
+      if (entry.nextDue === null || days < entry.nextDue) {
+        entry.nextDue = days;
+      }
+    }
+  });
+
+  const rows = [...owners.values()]
+    .map((entry) => ({
+      ...entry,
+      avgFit: entry.total ? entry.fitSum / entry.total : 0,
+      nextDueLabel: entry.nextDue === null ? "N/A" : `${entry.nextDue}d`,
+    }))
+    .sort(
+      (a, b) =>
+        b.overdue - a.overdue ||
+        b.dueSoon - a.dueSoon ||
+        b.total - a.total ||
+        a.owner.localeCompare(b.owner)
+    )
+    .slice(0, 6);
+
+  selectors.ownerLoad.innerHTML = "";
+  rows.forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = "owner-row";
+    row.innerHTML = `
+      <div>
+        <h4>${entry.owner}</h4>
+        <p>Total ${entry.total} · Due 30d ${entry.dueSoon} · Overdue ${entry.overdue}</p>
+      </div>
+      <div class="owner-meta">
+        <span>Avg fit</span>
+        <strong>${entry.avgFit.toFixed(1)}</strong>
+        <em>Next ${entry.nextDueLabel}</em>
+      </div>
+    `;
+    selectors.ownerLoad.append(row);
+  });
+};
+
 const actionPriority = (days) => {
   if (days < 0) return 0;
   if (days <= 7) return 1;
@@ -696,6 +922,8 @@ const render = () => {
   renderMetrics(state.opportunities);
   renderSignals(filtered);
   renderPipeline(state.opportunities);
+  renderDeadlineHorizon(filtered);
+  renderOwnerLoad(filtered);
   renderActionSummary(filtered);
   renderActionQueue(filtered);
   renderReadiness(filtered);

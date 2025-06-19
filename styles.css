@@ -539,6 +539,97 @@ body {
   border: 1px solid var(--border);
 }
 
+.horizon-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.horizon-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.horizon-bar {
+  height: 8px;
+  background: #f0f1f4;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.horizon-fill {
+  height: 100%;
+  background: var(--accent-2);
+  border-radius: 999px;
+}
+
+.horizon-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.owner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.owner-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.owner-row h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.owner-row p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.owner-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.owner-meta strong {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.owner-meta em {
+  font-style: normal;
+  color: var(--muted);
+}
+
+.owner-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .add-form {
   display: grid;
   gap: 10px;
