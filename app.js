@@ -400,31 +400,12 @@ const renderPipeline = (items) => {
   });
 };
 
-const renderHorizon = (items) => {
+
+const renderDeadlineHorizon = (items) => {
   if (!selectors.horizonChart) {
     return;
   }
 
-  const buckets = [
-    { label: "Overdue", test: (days) => days < 0 },
-    { label: "0-7d", test: (days) => days >= 0 && days <= 7 },
-    { label: "8-14d", test: (days) => days >= 8 && days <= 14 },
-    { label: "15-30d", test: (days) => days >= 15 && days <= 30 },
-    { label: "31-60d", test: (days) => days >= 31 && days <= 60 },
-    { label: "61-90d", test: (days) => days >= 61 && days <= 90 },
-    { label: "90d+", test: (days) => days > 90 },
-  ];
-
-  const counts = buckets.map(() => 0);
-  items.forEach((item) => {
-    const days = daysBetween(item.deadline);
-    const idx = buckets.findIndex((bucket) => bucket.test(days));
-    if (idx >= 0) {
-      counts[idx] += 1;
-    }
-  });
-
-  const maxCount = Math.max(1, ...counts);
   selectors.horizonChart.innerHTML = "";
 
   if (!items.length) {
@@ -433,95 +414,10 @@ const renderHorizon = (items) => {
     return;
   }
 
-  buckets.forEach((bucket, index) => {
-    const row = document.createElement("div");
-    row.className = "horizon-row";
-    const width = Math.round((counts[index] / maxCount) * 100);
-    row.innerHTML = `
-      <span class="horizon-label">${bucket.label}</span>
-      <div class="horizon-bar">
-        <span style="width: ${width}%"></span>
-      </div>
-      <strong class="horizon-count">${counts[index]}</strong>
-    `;
-    selectors.horizonChart.append(row);
-  });
-};
-
-const renderOwnerLoad = (items) => {
-  if (!selectors.ownerLoad) {
-    return;
-  }
-
-  const ownerMap = new Map();
-  items.forEach((item) => {
-    const owner = item.owner || "Unassigned";
-    const days = daysBetween(item.deadline);
-    if (!ownerMap.has(owner)) {
-      ownerMap.set(owner, { owner, count: 0, fitTotal: 0, soonest: days });
-    }
-    const entry = ownerMap.get(owner);
-    entry.count += 1;
-    entry.fitTotal += Number(item.fit) || 0;
-    entry.soonest = Math.min(entry.soonest, days);
-  });
-
-  const owners = [...ownerMap.values()]
-    .map((entry) => ({
-      ...entry,
-      avgFit: entry.count ? entry.fitTotal / entry.count : 0,
-    }))
-    .sort(
-      (a, b) =>
-        b.count - a.count ||
-        a.soonest - b.soonest ||
-        a.owner.localeCompare(b.owner)
-    )
-    .slice(0, 6);
-
-  selectors.ownerLoad.innerHTML = "";
-
-  if (!owners.length) {
-    selectors.ownerLoad.innerHTML =
-      "<div class='owner-empty'>No owners in view.</div>";
-    return;
-  }
-
-  owners.forEach((entry) => {
-    const card = document.createElement("div");
-    const soonestLabel =
-      entry.soonest < 0
-        ? `${Math.abs(entry.soonest)}d overdue`
-        : `${entry.soonest}d`;
-    card.className = "owner-item";
-    card.innerHTML = `
-      <div>
-        <h4>${entry.owner}</h4>
-        <p>${entry.count} opportunities · Next due ${soonestLabel}</p>
-      </div>
-      <div class="owner-meta">
-        <span>Avg fit</span>
-        <strong>${entry.avgFit.toFixed(1)}</strong>
-      </div>
-    `;
-    selectors.ownerLoad.append(card);
-  });
-};
-
-const renderDeadlineHorizon = (items) => {
-  if (!selectors.horizonChart) {
-    return;
-  }
-
-  if (!items.length) {
-    selectors.horizonChart.innerHTML =
-      "<div class='horizon-empty'>No deadlines in view yet.</div>";
-    return;
-  }
-
   const buckets = [
     { label: "Overdue", match: (days) => days < 0 },
-    { label: "0-14d", match: (days) => days >= 0 && days <= 14 },
+    { label: "0-7d", match: (days) => days >= 0 && days <= 7 },
+    { label: "8-14d", match: (days) => days >= 8 && days <= 14 },
     { label: "15-30d", match: (days) => days >= 15 && days <= 30 },
     { label: "31-60d", match: (days) => days >= 31 && days <= 60 },
     { label: "61-90d", match: (days) => days >= 61 && days <= 90 },
@@ -533,17 +429,16 @@ const renderDeadlineHorizon = (items) => {
   );
   const maxCount = Math.max(1, ...counts);
 
-  selectors.horizonChart.innerHTML = "";
   buckets.forEach((bucket, index) => {
     const count = counts[index];
     const row = document.createElement("div");
     row.className = "horizon-row";
     row.innerHTML = `
-      <span>${bucket.label}</span>
+      <span class="horizon-label">${bucket.label}</span>
       <div class="horizon-bar">
         <div class="horizon-fill" style="width: ${(count / maxCount) * 100}%"></div>
       </div>
-      <strong>${count}</strong>
+      <strong class="horizon-count">${count}</strong>
     `;
     selectors.horizonChart.append(row);
   });
@@ -551,12 +446,6 @@ const renderDeadlineHorizon = (items) => {
 
 const renderOwnerLoad = (items) => {
   if (!selectors.ownerLoad) {
-    return;
-  }
-
-  if (!items.length) {
-    selectors.ownerLoad.innerHTML =
-      "<div class='owner-empty'>No owner load to show yet.</div>";
     return;
   }
 
@@ -594,30 +483,39 @@ const renderOwnerLoad = (items) => {
     .map((entry) => ({
       ...entry,
       avgFit: entry.total ? entry.fitSum / entry.total : 0,
-      nextDueLabel: entry.nextDue === null ? "N/A" : `${entry.nextDue}d`,
+      nextDueLabel:
+        entry.nextDue === null
+          ? "N/A"
+          : entry.nextDue < 0
+            ? `${Math.abs(entry.nextDue)}d overdue`
+            : `${entry.nextDue}d`,
     }))
     .sort(
       (a, b) =>
-        b.overdue - a.overdue ||
-        b.dueSoon - a.dueSoon ||
         b.total - a.total ||
+        a.nextDue - b.nextDue ||
         a.owner.localeCompare(b.owner)
     )
     .slice(0, 6);
 
   selectors.ownerLoad.innerHTML = "";
+  if (!rows.length) {
+    selectors.ownerLoad.innerHTML =
+      "<div class='owner-empty'>No owners in view.</div>";
+    return;
+  }
+
   rows.forEach((entry) => {
     const row = document.createElement("div");
-    row.className = "owner-row";
+    row.className = "owner-item";
     row.innerHTML = `
       <div>
         <h4>${entry.owner}</h4>
-        <p>Total ${entry.total} · Due 30d ${entry.dueSoon} · Overdue ${entry.overdue}</p>
+        <p>${entry.total} opportunities · Next due ${entry.nextDueLabel}</p>
       </div>
       <div class="owner-meta">
         <span>Avg fit</span>
         <strong>${entry.avgFit.toFixed(1)}</strong>
-        <em>Next ${entry.nextDueLabel}</em>
       </div>
     `;
     selectors.ownerLoad.append(row);

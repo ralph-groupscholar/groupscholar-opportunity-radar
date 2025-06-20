@@ -546,10 +546,14 @@ body {
 
 .horizon-row {
   display: grid;
-  grid-template-columns: 70px 1fr 32px;
+  grid-template-columns: 70px 1fr 36px;
   align-items: center;
   gap: 10px;
   font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.horizon-label {
   color: var(--muted);
 }
 
@@ -564,6 +568,11 @@ body {
   height: 100%;
   background: var(--accent-2);
   border-radius: 999px;
+}
+
+.horizon-count {
+  color: var(--ink);
+  text-align: right;
 }
 
 .horizon-empty {
@@ -581,7 +590,7 @@ body {
   margin-top: 12px;
 }
 
-.owner-row {
+.owner-item {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -591,13 +600,13 @@ body {
   border: 1px solid var(--border);
 }
 
-.owner-row h4 {
+.owner-item h4 {
   margin: 0 0 6px;
   font-size: 0.95rem;
   color: var(--ink);
 }
 
-.owner-row p {
+.owner-item p {
   margin: 0;
   font-size: 0.8rem;
   color: var(--muted);
@@ -615,11 +624,6 @@ body {
 .owner-meta strong {
   font-size: 0.9rem;
   color: var(--ink);
-}
-
-.owner-meta em {
-  font-style: normal;
-  color: var(--muted);
 }
 
 .owner-empty {
