@@ -66,3 +66,8 @@
 - Implemented the Deadline Horizon panel with deadline buckets and scaled bar chart.
 - Added Owner Load insights by owner with totals, due-soon, overdue, avg fit, and next due timing.
 - Styled the new horizon and owner workload components to match the side-panel cards.
+
+## Iteration 79
+- Added Coverage Mix panel to surface region and opportunity type distribution.
+- Introduced coverage gap signal to flag thin areas in the filtered pipeline.
+- Styled coverage bars to align with existing side-panel visuals.

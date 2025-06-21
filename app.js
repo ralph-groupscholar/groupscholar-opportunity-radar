@@ -20,6 +20,7 @@ const selectors = {
   readinessList: document.getElementById("readinessList"),
   horizonChart: document.getElementById("horizonChart"),
   ownerLoad: document.getElementById("ownerLoad"),
+  coverageMix: document.getElementById("coverageMix"),
   export: document.getElementById("exportCsv"),
   exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
@@ -73,6 +74,27 @@ const formatIcsDate = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}${month}${day}`;
+};
+
+const getCounts = (items, key) => {
+  const counts = items.reduce((acc, item) => {
+    const value = item[key] || "Unknown";
+    acc[value] = (acc[value] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(counts).map(([label, count]) => ({ label, count }));
+};
+
+const findCoverageGap = (regionCounts, typeCounts) => {
+  const combined = [
+    ...regionCounts.map((entry) => ({ ...entry, category: "region" })),
+    ...typeCounts.map((entry) => ({ ...entry, category: "type" })),
+  ];
+  const thin = combined.filter((entry) => entry.count <= 1);
+  if (!thin.length) {
+    return null;
+  }
+  return thin.sort((a, b) => a.count - b.count || a.label.localeCompare(b.label))[0];
 };
 
 const escapeIcs = (value) =>
@@ -343,6 +365,9 @@ const renderSignals = (items) => {
   )[0];
   const highestFunding = [...items].sort((a, b) => b.funding - a.funding)[0];
   const watchlist = items.filter((item) => state.watchlist.has(item.id));
+  const regionCounts = getCounts(items, "region");
+  const typeCounts = getCounts(items, "type");
+  const coverageGap = findCoverageGap(regionCounts, typeCounts);
 
   const signals = [
     {
@@ -362,6 +387,12 @@ const renderSignals = (items) => {
       body: watchlist.length
         ? `${watchlist.length} opportunities flagged for leadership review.`
         : "Nothing on the watchlist yet.",
+    },
+    {
+      title: "Coverage gap",
+      body: coverageGap
+        ? `Only ${coverageGap.count} ${coverageGap.category} item in ${coverageGap.label}.`
+        : "Coverage looks balanced across regions and types.",
     },
   ];
 
@@ -400,6 +431,54 @@ const renderPipeline = (items) => {
   });
 };
 
+const renderCoverageMix = (items) => {
+  if (!selectors.coverageMix) {
+    return;
+  }
+
+  selectors.coverageMix.innerHTML = "";
+
+  if (!items.length) {
+    selectors.coverageMix.innerHTML =
+      "<div class='coverage-empty'>No coverage data yet.</div>";
+    return;
+  }
+
+  const regionCounts = getCounts(items, "region").sort(
+    (a, b) => b.count - a.count || a.label.localeCompare(b.label)
+  );
+  const typeCounts = getCounts(items, "type").sort(
+    (a, b) => b.count - a.count || a.label.localeCompare(b.label)
+  );
+
+  const buildSection = (title, entries) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "coverage-section";
+    wrapper.innerHTML = `<h4>${title}</h4>`;
+
+    const max = entries[0]?.count || 1;
+    entries.slice(0, 4).forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "coverage-row";
+      row.innerHTML = `
+        <span>${entry.label}</span>
+        <div class="coverage-bar">
+          <div class="coverage-fill" style="width:${Math.max(
+            8,
+            Math.round((entry.count / max) * 100)
+          )}%"></div>
+        </div>
+        <strong>${entry.count}</strong>
+      `;
+      wrapper.append(row);
+    });
+
+    return wrapper;
+  };
+
+  selectors.coverageMix.append(buildSection("Regions", regionCounts));
+  selectors.coverageMix.append(buildSection("Opportunity types", typeCounts));
+};
 
 const renderDeadlineHorizon = (items) => {
   if (!selectors.horizonChart) {
@@ -820,6 +899,7 @@ const render = () => {
   renderMetrics(state.opportunities);
   renderSignals(filtered);
   renderPipeline(state.opportunities);
+  renderCoverageMix(filtered);
   renderDeadlineHorizon(filtered);
   renderOwnerLoad(filtered);
   renderActionSummary(filtered);

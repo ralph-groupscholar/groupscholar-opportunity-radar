@@ -539,6 +539,56 @@ body {
   border: 1px solid var(--border);
 }
 
+.coverage-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.coverage-section h4 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.coverage-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 32px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.coverage-row strong {
+  color: var(--ink);
+  text-align: right;
+}
+
+.coverage-bar {
+  height: 8px;
+  background: #f0f1f4;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.coverage-fill {
+  height: 100%;
+  background: var(--accent-1);
+  border-radius: 999px;
+}
+
+.coverage-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .horizon-chart {
   display: grid;
   gap: 10px;
