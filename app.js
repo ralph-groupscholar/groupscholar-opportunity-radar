@@ -26,6 +26,8 @@ const selectors = {
   coverageMix: document.getElementById("coverageMix"),
   hygieneSummary: document.getElementById("hygieneSummary"),
   hygieneList: document.getElementById("hygieneList"),
+  priorityMatrix: document.getElementById("priorityMatrix"),
+  priorityTargets: document.getElementById("priorityTargets"),
   export: document.getElementById("exportCsv"),
   exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
@@ -97,6 +99,18 @@ const getCounts = (items, key) => {
     return acc;
   }, {});
   return Object.entries(counts).map(([label, count]) => ({ label, count }));
+};
+
+const getMedian = (values) => {
+  if (!values.length) {
+    return null;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
 };
 
 const findCoverageGap = (regionCounts, typeCounts) => {
@@ -752,6 +766,112 @@ const renderOwnerLoad = (items) => {
   });
 };
 
+const renderPriorityMatrix = (items) => {
+  if (!selectors.priorityMatrix || !selectors.priorityTargets) {
+    return;
+  }
+
+  selectors.priorityMatrix.innerHTML = "";
+  selectors.priorityTargets.innerHTML = "";
+
+  if (!items.length) {
+    selectors.priorityMatrix.innerHTML =
+      "<div class='priority-empty'>No opportunities available to score.</div>";
+    return;
+  }
+
+  const fundingValues = items
+    .map((item) => Number(item.funding))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const fitValues = items
+    .map((item) => Number(item.fit))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  const fundingThreshold = getMedian(fundingValues) ?? 50000;
+  const fitThreshold = getMedian(fitValues) ?? 3.5;
+
+  const quadrants = {
+    highHigh: { label: "High fit / High funding", items: [] },
+    highLow: { label: "High fit / Lower funding", items: [] },
+    lowHigh: { label: "Lower fit / High funding", items: [] },
+    lowLow: { label: "Lower fit / Lower funding", items: [] },
+  };
+
+  items.forEach((item) => {
+    const funding = Number(item.funding) || 0;
+    const fit = Number(item.fit) || 0;
+    const fundingHigh = funding >= fundingThreshold;
+    const fitHigh = fit >= fitThreshold;
+    if (fundingHigh && fitHigh) {
+      quadrants.highHigh.items.push(item);
+    } else if (fitHigh) {
+      quadrants.highLow.items.push(item);
+    } else if (fundingHigh) {
+      quadrants.lowHigh.items.push(item);
+    } else {
+      quadrants.lowLow.items.push(item);
+    }
+  });
+
+  const grid = document.createElement("div");
+  grid.className = "priority-grid";
+
+  const order = [
+    { key: "highHigh", primary: true },
+    { key: "highLow" },
+    { key: "lowHigh" },
+    { key: "lowLow" },
+  ];
+
+  order.forEach(({ key, primary }) => {
+    const group = quadrants[key];
+    const cell = document.createElement("div");
+    cell.className = `priority-cell${primary ? " is-primary" : ""}`;
+    cell.innerHTML = `
+      <span>${group.label}</span>
+      <strong>${group.items.length}</strong>
+      <em>Fit ≥ ${fitThreshold.toFixed(1)} • Funding ≥ ${formatCurrencyValue(
+        Math.round(fundingThreshold)
+      )}</em>
+    `;
+    grid.append(cell);
+  });
+
+  selectors.priorityMatrix.append(grid);
+
+  const targets = [...quadrants.highHigh.items]
+    .sort((a, b) => {
+      const daysDiff = daysBetween(a.deadline) - daysBetween(b.deadline);
+      if (daysDiff !== 0) {
+        return daysDiff;
+      }
+      return (Number(b.funding) || 0) - (Number(a.funding) || 0);
+    })
+    .slice(0, 4);
+
+  if (!targets.length) {
+    selectors.priorityTargets.innerHTML =
+      "<div class='priority-empty'>No high-fit/high-funding targets in view.</div>";
+    return;
+  }
+
+  targets.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "priority-target";
+    row.innerHTML = `
+      <div>
+        <strong>${item.name}</strong>
+        <span>${item.owner || "Unassigned"} • Due ${formatDate(item.deadline)}</span>
+      </div>
+      <div class="priority-meta">
+        <span>Fit ${item.fit || "N/A"}</span>
+        <strong>${formatCurrencyValue(item.funding)}</strong>
+      </div>
+    `;
+    selectors.priorityTargets.append(row);
+  });
+};
+
 const actionPriority = (days) => {
   if (days < 0) return 0;
   if (days <= 7) return 1;
@@ -1055,6 +1175,7 @@ const render = () => {
   renderDeadlineHorizon(filtered);
   renderFundingMix(filtered);
   renderOwnerLoad(filtered);
+  renderPriorityMatrix(filtered);
   renderActionSummary(filtered);
   renderActionQueue(filtered);
   renderReadiness(filtered);

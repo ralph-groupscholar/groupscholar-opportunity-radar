@@ -78,6 +78,11 @@
 - Styled the new funding insight card to match the radar side-panel visuals.
 - Attempted Vercel production deploy but hit deployment quota limit.
 
+## Iteration 81
+- Added a Priority Matrix panel to bucket opportunities by median fit and funding.
+- Highlighted high-fit/high-funding targets with deadline-ordered quick picks.
+- Styled the matrix and target rows to align with the existing radar side-panel cards.
+
 ## Iteration 80
 - Added a Data Hygiene panel with missing-field and overdue counts plus top cleanup targets.
 - Included hygiene stats in the briefing output for quicker follow-up.

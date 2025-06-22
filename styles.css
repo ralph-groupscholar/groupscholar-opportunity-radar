@@ -817,6 +817,92 @@ body {
   font-size: 0.85rem;
 }
 
+.priority-matrix {
+  display: grid;
+  gap: 12px;
+}
+
+.priority-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.priority-cell {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  min-height: 72px;
+}
+
+.priority-cell strong {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.priority-cell em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.priority-cell.is-primary {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 10px 30px -25px rgba(37, 99, 235, 0.4);
+}
+
+.priority-targets {
+  display: grid;
+  gap: 8px;
+}
+
+.priority-target {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.priority-target strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.priority-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+
+.priority-meta strong {
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.priority-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .add-form {
   display: grid;
   gap: 10px;
