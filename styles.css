@@ -5,6 +5,7 @@
   --glow: #ffe1b2;
   --accent: #ff6b35;
   --accent-2: #3b7a57;
+  --accent-3: #2f5cff;
   --surface: #f6f0e7;
   --surface-2: #fffaf2;
   --border: rgba(23, 20, 37, 0.1);
@@ -500,6 +501,82 @@ body {
   font-size: 0.85rem;
 }
 
+.hygiene-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.hygiene-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.hygiene-chip strong {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.hygiene-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.hygiene-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.hygiene-item h4 {
+  margin: 0 0 6px;
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+
+.hygiene-item p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.hygiene-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.hygiene-meta strong {
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.hygiene-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .panel-note {
   color: var(--muted);
   font-size: 0.85rem;
@@ -617,6 +694,62 @@ body {
 .horizon-fill {
   height: 100%;
   background: var(--accent-2);
+  border-radius: 999px;
+}
+
+.funding-mix {
+  display: grid;
+  gap: 14px;
+}
+
+.funding-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.funding-summary h4 {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.funding-summary strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.funding-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.funding-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.funding-bar {
+  height: 8px;
+  background: #f0f1f4;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.funding-fill {
+  height: 100%;
+  background: var(--accent-3);
   border-radius: 999px;
 }
 

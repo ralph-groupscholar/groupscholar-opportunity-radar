@@ -13,14 +13,19 @@ const selectors = {
   count: document.getElementById("resultsCount"),
   metrics: document.getElementById("metricGrid"),
   pipeline: document.getElementById("pipelineHealth"),
+  fundingSummary: document.getElementById("fundingSummary"),
+  fundingOutlook: document.getElementById("fundingOutlook"),
   signalGrid: document.getElementById("signalGrid"),
   actionSummary: document.getElementById("actionSummary"),
   actionQueue: document.getElementById("actionQueue"),
   readinessSummary: document.getElementById("readinessSummary"),
   readinessList: document.getElementById("readinessList"),
   horizonChart: document.getElementById("horizonChart"),
+  fundingMix: document.getElementById("fundingMix"),
   ownerLoad: document.getElementById("ownerLoad"),
   coverageMix: document.getElementById("coverageMix"),
+  hygieneSummary: document.getElementById("hygieneSummary"),
+  hygieneList: document.getElementById("hygieneList"),
   export: document.getElementById("exportCsv"),
   exportCalendar: document.getElementById("exportCalendar"),
   reset: document.getElementById("resetFilters"),
@@ -61,6 +66,15 @@ const formatCurrency = (value) =>
         maximumFractionDigits: 0,
       })
     : "N/A";
+
+const formatCurrencyValue = (value) =>
+  value === null || value === undefined
+    ? "N/A"
+    : value.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      });
 
 const formatDate = (value) =>
   new Date(value + "T00:00:00").toLocaleDateString("en-US", {
@@ -480,6 +494,67 @@ const renderCoverageMix = (items) => {
   selectors.coverageMix.append(buildSection("Opportunity types", typeCounts));
 };
 
+const renderHygiene = (items) => {
+  if (!selectors.hygieneSummary || !selectors.hygieneList) {
+    return;
+  }
+
+  const missingLink = items.filter((item) => !item.link);
+  const missingFunding = items.filter((item) => !Number(item.funding));
+  const missingFocus = items.filter((item) => !String(item.focus || "").trim());
+  const overdue = items.filter((item) => daysBetween(item.deadline) < 0);
+
+  const summary = [
+    { label: "Missing links", value: missingLink.length },
+    { label: "Funding TBD", value: missingFunding.length },
+    { label: "Missing focus", value: missingFocus.length },
+    { label: "Overdue", value: overdue.length },
+  ];
+
+  selectors.hygieneSummary.innerHTML = "";
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "hygiene-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.hygieneSummary.append(chip);
+  });
+
+  const issueGroups = [
+    { title: "Missing source links", items: missingLink },
+    { title: "Funding amount needed", items: missingFunding },
+    { title: "Focus notes missing", items: missingFocus },
+    { title: "Overdue deadlines", items: overdue },
+  ];
+
+  const issues = issueGroups.filter((group) => group.items.length > 0);
+  selectors.hygieneList.innerHTML = "";
+
+  if (!issues.length) {
+    selectors.hygieneList.innerHTML =
+      "<div class='hygiene-empty'>Everything looks clean in the current view.</div>";
+    return;
+  }
+
+  issues.forEach((group) => {
+    const list = group.items
+      .sort((a, b) => daysBetween(a.deadline) - daysBetween(b.deadline))
+      .slice(0, 3);
+    const row = document.createElement("div");
+    row.className = "hygiene-item";
+    row.innerHTML = `
+      <div>
+        <h4>${group.title}</h4>
+        <p>${list.map((item) => item.name).join(", ")}</p>
+      </div>
+      <div class="hygiene-meta">
+        <span>Count</span>
+        <strong>${group.items.length}</strong>
+      </div>
+    `;
+    selectors.hygieneList.append(row);
+  });
+};
+
 const renderDeadlineHorizon = (items) => {
   if (!selectors.horizonChart) {
     return;
@@ -520,6 +595,82 @@ const renderDeadlineHorizon = (items) => {
       <strong class="horizon-count">${count}</strong>
     `;
     selectors.horizonChart.append(row);
+  });
+};
+
+const renderFundingMix = (items) => {
+  if (!selectors.fundingOutlook || !selectors.fundingSummary) {
+    return;
+  }
+
+  selectors.fundingOutlook.innerHTML = "";
+  selectors.fundingSummary.innerHTML = "";
+
+  if (!items.length) {
+    selectors.fundingOutlook.innerHTML =
+      "<div class='funding-empty'>No funding signals in view.</div>";
+    return;
+  }
+
+  const totalFunding = items.reduce(
+    (sum, item) => sum + (Number(item.funding) || 0),
+    0
+  );
+  const weightedFunding = items.reduce(
+    (sum, item) => sum + (Number(item.funding) || 0) * ((Number(item.fit) || 0) / 5),
+    0
+  );
+  const due30Funding = items.reduce((sum, item) => {
+    const days = daysBetween(item.deadline);
+    return days >= 0 && days <= 30 ? sum + (Number(item.funding) || 0) : sum;
+  }, 0);
+  const overdueFunding = items.reduce((sum, item) => {
+    const days = daysBetween(item.deadline);
+    return days < 0 ? sum + (Number(item.funding) || 0) : sum;
+  }, 0);
+
+  const summary = [
+    { label: "Total value", value: formatCurrencyValue(totalFunding) },
+    { label: "Fit-adjusted", value: formatCurrencyValue(Math.round(weightedFunding)) },
+    { label: "Due in 30d", value: formatCurrencyValue(due30Funding) },
+    { label: "Overdue", value: formatCurrencyValue(overdueFunding) },
+  ];
+
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "funding-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.fundingSummary.append(chip);
+  });
+
+  const buckets = [
+    { label: "Overdue", match: (days) => days < 0 },
+    { label: "0-30d", match: (days) => days >= 0 && days <= 30 },
+    { label: "31-60d", match: (days) => days >= 31 && days <= 60 },
+    { label: "61-90d", match: (days) => days >= 61 && days <= 90 },
+    { label: "90d+", match: (days) => days > 90 },
+  ];
+
+  const values = buckets.map((bucket) =>
+    items.reduce((sum, item) => {
+      const days = daysBetween(item.deadline);
+      return bucket.match(days) ? sum + (Number(item.funding) || 0) : sum;
+    }, 0)
+  );
+  const maxValue = Math.max(1, ...values);
+
+  buckets.forEach((bucket, index) => {
+    const value = values[index];
+    const row = document.createElement("div");
+    row.className = "funding-row";
+    row.innerHTML = `
+      <span class="funding-label">${bucket.label}</span>
+      <div class="funding-bar">
+        <div class="funding-fill" style="width:${(value / maxValue) * 100}%"></div>
+      </div>
+      <strong class="funding-value">${formatCurrencyValue(value)}</strong>
+    `;
+    selectors.fundingOutlook.append(row);
   });
 };
 
@@ -900,7 +1051,9 @@ const render = () => {
   renderSignals(filtered);
   renderPipeline(state.opportunities);
   renderCoverageMix(filtered);
+  renderHygiene(filtered);
   renderDeadlineHorizon(filtered);
+  renderFundingMix(filtered);
   renderOwnerLoad(filtered);
   renderActionSummary(filtered);
   renderActionQueue(filtered);
@@ -995,6 +1148,9 @@ const buildBrief = (items) => {
     .sort((a, b) => b.funding - a.funding)
     .slice(0, 3);
   const watchlist = items.filter((item) => state.watchlist.has(item.id));
+  const missingLink = items.filter((item) => !item.link).length;
+  const missingFunding = items.filter((item) => !Number(item.funding)).length;
+  const missingFocus = items.filter((item) => !String(item.focus || "").trim()).length;
 
   const lineFor = (item) => {
     const days = daysBetween(item.deadline);
@@ -1019,6 +1175,7 @@ const buildBrief = (items) => {
     }).length}`,
     `High-fit (4+): ${items.filter((item) => item.fit >= 4).length}`,
     `Watchlist: ${watchlist.length}`,
+    `Missing links: ${missingLink} · Funding TBD: ${missingFunding} · Missing focus: ${missingFocus}`,
     "",
     section("Overdue", overdue, "No overdue opportunities."),
     "",

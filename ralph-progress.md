@@ -71,3 +71,14 @@
 - Added Coverage Mix panel to surface region and opportunity type distribution.
 - Introduced coverage gap signal to flag thin areas in the filtered pipeline.
 - Styled coverage bars to align with existing side-panel visuals.
+
+## Iteration 80
+- Added a Funding Mix panel with award bucket distribution, totals, and averages.
+- Rendered funding summaries from filtered opportunities and highlighted unknown awards.
+- Styled the new funding insight card to match the radar side-panel visuals.
+- Attempted Vercel production deploy but hit deployment quota limit.
+
+## Iteration 80
+- Added a Data Hygiene panel with missing-field and overdue counts plus top cleanup targets.
+- Included hygiene stats in the briefing output for quicker follow-up.
+- Styled the hygiene summary and issue list to match the side-panel system.
