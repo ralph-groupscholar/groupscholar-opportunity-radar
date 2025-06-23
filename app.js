@@ -23,9 +23,13 @@ const selectors = {
   horizonChart: document.getElementById("horizonChart"),
   fundingMix: document.getElementById("fundingMix"),
   ownerLoad: document.getElementById("ownerLoad"),
+  riskSummary: document.getElementById("riskSummary"),
+  riskList: document.getElementById("riskList"),
   coverageMix: document.getElementById("coverageMix"),
   hygieneSummary: document.getElementById("hygieneSummary"),
   hygieneList: document.getElementById("hygieneList"),
+  stageSummary: document.getElementById("stageSummary"),
+  stageList: document.getElementById("stageList"),
   priorityMatrix: document.getElementById("priorityMatrix"),
   priorityTargets: document.getElementById("priorityTargets"),
   export: document.getElementById("exportCsv"),
@@ -113,6 +117,10 @@ const getMedian = (values) => {
   return sorted[mid];
 };
 
+const READY_STAGES = new Set(["Ready", "Submitted"]);
+
+const isReadyStage = (stage) => READY_STAGES.has(stage);
+
 const findCoverageGap = (regionCounts, typeCounts) => {
   const combined = [
     ...regionCounts.map((entry) => ({ ...entry, category: "region" })),
@@ -123,6 +131,13 @@ const findCoverageGap = (regionCounts, typeCounts) => {
     return null;
   }
   return thin.sort((a, b) => a.count - b.count || a.label.localeCompare(b.label))[0];
+};
+
+const isEarlyStage = (stage) => {
+  const value = String(stage || "").toLowerCase();
+  return ["discover", "research", "scop", "watch", "outreach", "intake"].some((key) =>
+    value.includes(key)
+  );
 };
 
 const escapeIcs = (value) =>
@@ -569,6 +584,97 @@ const renderHygiene = (items) => {
   });
 };
 
+const renderStageMomentum = (items) => {
+  if (!selectors.stageSummary || !selectors.stageList) {
+    return;
+  }
+
+  selectors.stageSummary.innerHTML = "";
+  selectors.stageList.innerHTML = "";
+
+  if (!items.length) {
+    selectors.stageList.innerHTML =
+      "<div class='stage-empty'>No opportunities in view.</div>";
+    return;
+  }
+
+  const stageMap = new Map();
+  let daysTotal = 0;
+  let daysCount = 0;
+  let earlyStageUrgent = 0;
+
+  items.forEach((item) => {
+    const stage = item.stage || "Unspecified";
+    const days = daysBetween(item.deadline);
+    if (!stageMap.has(stage)) {
+      stageMap.set(stage, { stage, count: 0, daysSum: 0, dueSoon: 0, overdue: 0 });
+    }
+    const entry = stageMap.get(stage);
+    entry.count += 1;
+    entry.daysSum += days;
+    if (days <= 14) {
+      entry.dueSoon += 1;
+      if (isEarlyStage(stage)) {
+        earlyStageUrgent += 1;
+      }
+    }
+    if (days < 0) {
+      entry.overdue += 1;
+    }
+    if (Number.isFinite(days)) {
+      daysTotal += days;
+      daysCount += 1;
+    }
+  });
+
+  const avgDays = daysCount ? Math.round(daysTotal / daysCount) : null;
+  const summary = [
+    { label: "Stages", value: stageMap.size },
+    { label: "Avg due", value: avgDays === null ? "N/A" : `${avgDays}d` },
+    { label: "Early-stage urgent", value: earlyStageUrgent },
+  ];
+
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "stage-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.stageSummary.append(chip);
+  });
+
+  const rows = [...stageMap.values()]
+    .map((entry) => ({
+      ...entry,
+      avgDays: entry.count ? Math.round(entry.daysSum / entry.count) : null,
+    }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        (a.avgDays ?? 0) - (b.avgDays ?? 0) ||
+        a.stage.localeCompare(b.stage)
+    )
+    .slice(0, 6);
+
+  rows.forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = "stage-row";
+    row.innerHTML = `
+      <div>
+        <h4>${entry.stage}</h4>
+        <p>${entry.count} opportunities · Avg due ${
+          entry.avgDays === null ? "N/A" : `${entry.avgDays}d`
+        }</p>
+      </div>
+      <div class="stage-meta">
+        <span>Due ≤14d</span>
+        <strong>${entry.dueSoon}</strong>
+        <span>Overdue</span>
+        <strong>${entry.overdue}</strong>
+      </div>
+    `;
+    selectors.stageList.append(row);
+  });
+};
+
 const renderDeadlineHorizon = (items) => {
   if (!selectors.horizonChart) {
     return;
@@ -763,6 +869,68 @@ const renderOwnerLoad = (items) => {
       </div>
     `;
     selectors.ownerLoad.append(row);
+  });
+};
+
+const renderRiskRadar = (items) => {
+  if (!selectors.riskSummary || !selectors.riskList) {
+    return;
+  }
+
+  const overdue = items.filter(
+    (item) => !isReadyStage(item.stage) && daysBetween(item.deadline) < 0
+  );
+  const due14 = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return !isReadyStage(item.stage) && days >= 0 && days <= 14;
+  });
+  const due30 = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return !isReadyStage(item.stage) && days >= 0 && days <= 30;
+  });
+
+  const summary = [
+    { label: "Overdue + not ready", value: overdue.length },
+    { label: "Due in 14d (not ready)", value: due14.length },
+    { label: "Due in 30d (not ready)", value: due30.length },
+  ];
+
+  selectors.riskSummary.innerHTML = "";
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "risk-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.riskSummary.append(chip);
+  });
+
+  const riskItems = items
+    .filter((item) => !isReadyStage(item.stage) && daysBetween(item.deadline) <= 30)
+    .sort((a, b) => daysBetween(a.deadline) - daysBetween(b.deadline))
+    .slice(0, 5);
+
+  selectors.riskList.innerHTML = "";
+  if (!riskItems.length) {
+    selectors.riskList.innerHTML =
+      "<div class='risk-empty'>No at-risk opportunities in the next 30 days.</div>";
+    return;
+  }
+
+  riskItems.forEach((item) => {
+    const days = daysBetween(item.deadline);
+    const label = days < 0 ? `${Math.abs(days)}d overdue` : `${days}d`;
+    const row = document.createElement("div");
+    row.className = "risk-item";
+    row.innerHTML = `
+      <div>
+        <h4>${item.name}</h4>
+        <p>Stage: ${item.stage} · Owner: ${item.owner}</p>
+      </div>
+      <div class="risk-meta">
+        <span>Deadline</span>
+        <strong>${label}</strong>
+      </div>
+    `;
+    selectors.riskList.append(row);
   });
 };
 
@@ -1172,9 +1340,11 @@ const render = () => {
   renderPipeline(state.opportunities);
   renderCoverageMix(filtered);
   renderHygiene(filtered);
+  renderStageMomentum(filtered);
   renderDeadlineHorizon(filtered);
   renderFundingMix(filtered);
   renderOwnerLoad(filtered);
+  renderRiskRadar(filtered);
   renderPriorityMatrix(filtered);
   renderActionSummary(filtered);
   renderActionQueue(filtered);
@@ -1261,6 +1431,10 @@ const buildBrief = (items) => {
     const days = daysBetween(item.deadline);
     return days >= 0 && days <= 14;
   });
+  const atRisk = items
+    .filter((item) => !isReadyStage(item.stage) && daysBetween(item.deadline) <= 30)
+    .sort((a, b) => daysBetween(a.deadline) - daysBetween(b.deadline))
+    .slice(0, 5);
   const highFit = items
     .filter((item) => item.fit >= 4)
     .sort((a, b) => b.fit - a.fit || b.funding - a.funding)
@@ -1272,11 +1446,21 @@ const buildBrief = (items) => {
   const missingLink = items.filter((item) => !item.link).length;
   const missingFunding = items.filter((item) => !Number(item.funding)).length;
   const missingFocus = items.filter((item) => !String(item.focus || "").trim()).length;
+  const earlyStageUrgent = items.filter((item) => {
+    const days = daysBetween(item.deadline);
+    return days <= 14 && isEarlyStage(item.stage);
+  }).length;
 
   const lineFor = (item) => {
     const days = daysBetween(item.deadline);
     const dayLabel = days >= 0 ? `${days}d` : `${Math.abs(days)}d overdue`;
     return `- ${item.name} - ${formatDate(item.deadline)} (${dayLabel}) · ${item.owner}`;
+  };
+
+  const riskLineFor = (item) => {
+    const days = daysBetween(item.deadline);
+    const dayLabel = days >= 0 ? `${days}d` : `${Math.abs(days)}d overdue`;
+    return `- ${item.name} - ${formatDate(item.deadline)} (${dayLabel}) · ${item.stage} · ${item.owner}`;
   };
 
   const section = (title, list, fallback) => {
@@ -1297,10 +1481,15 @@ const buildBrief = (items) => {
     `High-fit (4+): ${items.filter((item) => item.fit >= 4).length}`,
     `Watchlist: ${watchlist.length}`,
     `Missing links: ${missingLink} · Funding TBD: ${missingFunding} · Missing focus: ${missingFocus}`,
+    `Early-stage urgent: ${earlyStageUrgent}`,
     "",
     section("Overdue", overdue, "No overdue opportunities."),
     "",
     section("Urgent (next 14 days)", urgent, "No urgent deadlines in the next two weeks."),
+    "",
+    atRisk.length
+      ? `Risk radar (not ready + next 30d)\n${atRisk.map(riskLineFor).join("\n")}`
+      : "Risk radar (not ready + next 30d)\nNo at-risk opportunities in the next 30 days.",
     "",
     section("High-fit focus", highFit, "No high-fit opportunities in view."),
     "",

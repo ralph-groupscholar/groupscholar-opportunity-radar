@@ -87,3 +87,8 @@
 - Added a Data Hygiene panel with missing-field and overdue counts plus top cleanup targets.
 - Included hygiene stats in the briefing output for quicker follow-up.
 - Styled the hygiene summary and issue list to match the side-panel system.
+
+## Iteration 77
+- Added a Risk Radar panel to spotlight soon-due opportunities that are not in a ready stage.
+- Summarized overdue, 14-day, and 30-day risk counts with a top at-risk list.
+- Extended the weekly brief output with the new risk radar callout.
