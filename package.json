@@ -4,6 +4,9 @@
   "private": true,
   "description": "Group Scholar Opportunity Radar",
   "type": "commonjs",
+  "scripts": {
+    "seed:opportunities": "node scripts/seed-opportunities.js"
+  },
   "dependencies": {
     "pg": "^8.11.3"
   }

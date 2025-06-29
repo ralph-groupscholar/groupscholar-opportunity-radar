@@ -14,15 +14,21 @@ When deployed on Vercel, Opportunity Radar syncs custom opportunities and watchl
 
 ### Environment variables (Vercel)
 Set these with `vercel env add` (do not commit credentials):
+- `DATABASE_URL` (preferred)
 - `PGHOST`
 - `PGUSER`
 - `PGPASSWORD`
 - `PGPORT`
 - `PGDATABASE`
-- `PGSSLMODE` (set to `require` unless your provider says otherwise)
+- `PGSSLMODE=disable` (required for the Group Scholar database host)
 
 ### Database setup
 Schema and seed data live in `db/schema.sql` and `db/seed.sql`.
+Seed production with:
+
+```
+npm run seed:opportunities
+```
 
 ## Local usage
 Open `index.html` in your browser. Data is stored in `localStorage` for custom entries and watchlist signals. Live sync is disabled when running from `file://`.
