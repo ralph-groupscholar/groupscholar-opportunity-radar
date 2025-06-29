@@ -741,6 +741,81 @@ body {
   font-size: 0.85rem;
 }
 
+.focus-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.focus-chip span {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.focus-chip strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.focus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.focus-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.focus-row h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.focus-row p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.focus-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.focus-meta strong {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.focus-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .horizon-chart {
   display: grid;
   gap: 10px;

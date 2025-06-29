@@ -92,3 +92,8 @@
 - Added a Risk Radar panel to spotlight soon-due opportunities that are not in a ready stage.
 - Summarized overdue, 14-day, and 30-day risk counts with a top at-risk list.
 - Extended the weekly brief output with the new risk radar callout.
+
+## Iteration 81 (continued)
+- Added a Focus Mix panel highlighting the top focus areas with fit and urgency signals.
+- Summarized focus coverage, best-fit focus, and due-soon focus totals in a new insight card.
+- Extended the briefing output with a focus spotlight line.

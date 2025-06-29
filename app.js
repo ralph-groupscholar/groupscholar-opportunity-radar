@@ -26,6 +26,8 @@ const selectors = {
   riskSummary: document.getElementById("riskSummary"),
   riskList: document.getElementById("riskList"),
   coverageMix: document.getElementById("coverageMix"),
+  focusSummary: document.getElementById("focusSummary"),
+  focusList: document.getElementById("focusList"),
   hygieneSummary: document.getElementById("hygieneSummary"),
   hygieneList: document.getElementById("hygieneList"),
   stageSummary: document.getElementById("stageSummary"),
@@ -115,6 +117,84 @@ const getMedian = (values) => {
     return (sorted[mid - 1] + sorted[mid]) / 2;
   }
   return sorted[mid];
+};
+
+const truncateText = (value, max = 32) => {
+  const text = String(value || "");
+  if (text.length <= max) {
+    return text;
+  }
+  return `${text.slice(0, max - 1)}…`;
+};
+
+const normalizeFocusTag = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s&/+.-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const formatFocusLabel = (value) =>
+  value
+    .split(" ")
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ""))
+    .join(" ")
+    .trim() || "Unspecified";
+
+const getFocusTags = (focus) => {
+  const raw = String(focus || "").trim();
+  if (!raw) {
+    return ["Unspecified"];
+  }
+  const tags = raw
+    .split(/[,;\n]+/)
+    .map((tag) => normalizeFocusTag(tag))
+    .filter(Boolean);
+  if (!tags.length) {
+    return ["Unspecified"];
+  }
+  return [...new Set(tags)];
+};
+
+const getFocusEntries = (items) => {
+  const focusMap = new Map();
+  items.forEach((item) => {
+    const tags = getFocusTags(item.focus);
+    const fit = Number(item.fit) || 0;
+    const funding = Number(item.funding) || 0;
+    const days = daysBetween(item.deadline);
+    tags.forEach((tag) => {
+      const key = normalizeFocusTag(tag);
+      const label = formatFocusLabel(key);
+      if (!focusMap.has(key)) {
+        focusMap.set(key, {
+          key,
+          label,
+          count: 0,
+          fitSum: 0,
+          fundingSum: 0,
+          dueSoon: 0,
+          overdue: 0,
+        });
+      }
+      const entry = focusMap.get(key);
+      entry.count += 1;
+      entry.fitSum += fit;
+      entry.fundingSum += funding;
+      if (days <= 30 && days >= 0) {
+        entry.dueSoon += 1;
+      }
+      if (days < 0) {
+        entry.overdue += 1;
+      }
+    });
+  });
+
+  return [...focusMap.values()].map((entry) => ({
+    ...entry,
+    avgFit: entry.count ? entry.fitSum / entry.count : null,
+    avgFunding: entry.count ? entry.fundingSum / entry.count : null,
+  }));
 };
 
 const READY_STAGES = new Set(["Ready", "Submitted"]);
@@ -521,6 +601,84 @@ const renderCoverageMix = (items) => {
 
   selectors.coverageMix.append(buildSection("Regions", regionCounts));
   selectors.coverageMix.append(buildSection("Opportunity types", typeCounts));
+};
+
+const renderFocusMix = (items) => {
+  if (!selectors.focusSummary || !selectors.focusList) {
+    return;
+  }
+
+  selectors.focusSummary.innerHTML = "";
+  selectors.focusList.innerHTML = "";
+
+  if (!items.length) {
+    selectors.focusList.innerHTML =
+      "<div class='focus-empty'>No focus signals in view.</div>";
+    return;
+  }
+
+  const entries = getFocusEntries(items).sort(
+    (a, b) =>
+      b.count - a.count ||
+      (b.avgFit ?? 0) - (a.avgFit ?? 0) ||
+      a.label.localeCompare(b.label)
+  );
+
+  if (!entries.length) {
+    selectors.focusList.innerHTML =
+      "<div class='focus-empty'>No focus tags captured yet.</div>";
+    return;
+  }
+
+  const topByCount = entries[0];
+  const topByFit = [...entries]
+    .filter((entry) => Number.isFinite(entry.avgFit))
+    .sort((a, b) => b.avgFit - a.avgFit)[0];
+  const dueSoonTotal = entries.reduce((sum, entry) => sum + entry.dueSoon, 0);
+
+  const summary = [
+    { label: "Focus areas", value: entries.length },
+    {
+      label: "Top focus",
+      value: topByCount ? truncateText(topByCount.label, 18) : "N/A",
+    },
+    {
+      label: "Best fit",
+      value: topByFit ? truncateText(topByFit.label, 18) : "N/A",
+    },
+    { label: "Due ≤30d", value: dueSoonTotal },
+  ];
+
+  summary.forEach((item) => {
+    const chip = document.createElement("div");
+    chip.className = "focus-chip";
+    chip.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    selectors.focusSummary.append(chip);
+  });
+
+  entries.slice(0, 6).forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = "focus-row";
+    row.innerHTML = `
+      <div>
+        <h4>${entry.label}</h4>
+        <p>${entry.count} opportunities · Avg fit ${
+          entry.avgFit === null ? "N/A" : entry.avgFit.toFixed(1)
+        } · Avg funding ${
+          entry.avgFunding === null
+            ? "N/A"
+            : formatCurrencyValue(Math.round(entry.avgFunding))
+        }</p>
+      </div>
+      <div class="focus-meta">
+        <span>Due ≤30d</span>
+        <strong>${entry.dueSoon}</strong>
+        <span>Overdue</span>
+        <strong>${entry.overdue}</strong>
+      </div>
+    `;
+    selectors.focusList.append(row);
+  });
 };
 
 const renderHygiene = (items) => {
@@ -1339,6 +1497,7 @@ const render = () => {
   renderSignals(filtered);
   renderPipeline(state.opportunities);
   renderCoverageMix(filtered);
+  renderFocusMix(filtered);
   renderHygiene(filtered);
   renderStageMomentum(filtered);
   renderDeadlineHorizon(filtered);
@@ -1450,6 +1609,11 @@ const buildBrief = (items) => {
     const days = daysBetween(item.deadline);
     return days <= 14 && isEarlyStage(item.stage);
   }).length;
+  const focusSpotlight = getFocusEntries(items)
+    .sort((a, b) => b.count - a.count || (b.avgFit ?? 0) - (a.avgFit ?? 0))
+    .slice(0, 3)
+    .map((entry) => `${entry.label} (${entry.count})`)
+    .join(", ");
 
   const lineFor = (item) => {
     const days = daysBetween(item.deadline);
@@ -1482,6 +1646,7 @@ const buildBrief = (items) => {
     `Watchlist: ${watchlist.length}`,
     `Missing links: ${missingLink} · Funding TBD: ${missingFunding} · Missing focus: ${missingFocus}`,
     `Early-stage urgent: ${earlyStageUrgent}`,
+    `Focus spotlight: ${focusSpotlight || "No focus tags captured yet."}`,
     "",
     section("Overdue", overdue, "No overdue opportunities."),
     "",
